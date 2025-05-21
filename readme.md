@@ -15,7 +15,7 @@ Ce projet a pour but de documenter de manière claire et approfondie les différ
 * Installer et utiliser des outils embarqués : `opkg`, `busybox`, `modprobe`, etc.
 * Expérimenter avec le noyau Linux : compilation, modules, gestion GPIO/LED
 
-Chaque TP est documenté avec un `README.md` complet, des fichiers sources et scripts utilisés en cours de manipulation.
+Chaque TP est documenté avec un `readme.md` complet, des fichiers sources et scripts utilisés en cours de manipulation.
 
 ---
 
