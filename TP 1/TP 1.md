@@ -39,16 +39,10 @@ La carte offre une plateforme moderne et largement utilisée dans les contextes 
 
 ### Question 0.2 — Méthodes de stockage du système
 
-Un système Linux embarqué nécessite au minimum deux éléments au démarrage :
-
-* un noyau Linux (fichier binaire exécutable : `zImage`, `uImage`, `Image`, ou `kernel.img`),
-* un système de fichiers root (rootfs), généralement compressé ou sous forme d'image montée (`.tar.bz2`, `.ext4`, `.squashfs`).
-
 **Moyens de stockage disponibles :**
 
 1. **Carte microSD** : méthode la plus simple, utilisée en production. Le chargeur d’amorçage du Raspberry Pi est conçu pour y chercher un système de fichiers FAT contenant le noyau.
 2. **Clé USB ou disque externe** : possible depuis les dernières versions du firmware du Pi, mais plus lent et moins fiable.
-3. **Mémoire eMMC** : non disponible ici, mais fréquente dans des SoCs plus intégrés.
 4. **Boot réseau (TFTP/NFS)** : méthode avancée utilisée dans ce TP. Nécessite un serveur DHCP pour fournir l’adresse IP, un serveur TFTP pour le noyau et le DTB, et un montage NFS ou copie locale du rootfs. Permet de modifier rapidement les fichiers côté développeur sans démonter la carte.
 
 Cette méthode réduit les manipulations physiques et accélère le cycle développement/test.
@@ -128,9 +122,16 @@ Cette commande génère un système Linux minimal, avec shell, init, et utilitai
 * `core-image-base-joypinote.tar.bz2` : système de fichiers racine
 * `manifest`, `testdata.json`, `modules.tgz` : métadonnées, modules compilés, dépendances
 
-#### Comparaison avec Ubuntu :
+#### Comparaison avec le linux de la VM :
 
-* Ubuntu : \~2 à 3 Go (interface graphique, paquets préinstallés, langages...)
+`df -f` permet de comparer la taille des systèmes de fichiers. Par soucis de précision, on exclut du calcul les fichiers mi11 :
+
+```bash
+mi11linux@mi11linux:/opt/mi11/poky/build/tmp/deploy/images/joypinote$ du -sh /opt/mi11/
+  9,0G    /opt/mi11/
+```
+
+* \~10 Go (interface graphique, paquets préinstallés, langages...)
 * Yocto : \~20 Mo, système minimaliste, rapide à charger et parfaitement adapté aux contraintes de l’embarqué
 
 La petite taille et la modularité sont les atouts majeurs de Yocto.
