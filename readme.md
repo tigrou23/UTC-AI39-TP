@@ -1,4 +1,4 @@
-# 💻 Linux Embarqué — TPs (UTC MI11 / AI39 - Printemps 2025)
+# 💻 Linux Embarqué — TPs (UTC AI39 - P25)
 
 Bienvenue sur mon dépôt GitHub dédié aux **Travaux Pratiques de l’UV MI11 / AI39 : Linux Embarqué**, suivie au semestre de printemps 2025 à l’[Université de Technologie de Compiègne](https://www.utc.fr).
 
