@@ -1,8 +1,8 @@
 # Compte Rendu TP1 - Linux embarqué (MI11 / AI39 - Printemps 2025)
 
-**Nom :** Hugo Pereira
+**Nom :** [Hugo Pereira](https://github.com/tigrou23) & Maher Zizouni
 
-**UV :** MI11
+**UV :** AI39
 
 **TP :** Linux embarqué - TP1
 
