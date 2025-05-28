@@ -23,21 +23,21 @@ Chaque TP est documenté avec un `readme.md` complet, des fichiers sources et sc
 
 ```bash
 .
-├── tp1/
-│   ├── readme.md         # Compte rendu complet du TP1
-│   ├── [sujet] TP1.pdf   # Sujet du TP1
-│   └── ressources/       # Ressources utilisées
-│       └── datasheet.pdf # Datasheet du Joy-Pi-Note
+├── tp[x]/
+│   ├── readme.md         # Compte rendu complet du TP[x]
+│   ├── TP[x]_sujet.pdf   # Sujet du TP[x]
+│   └── ressources/       # Ressources utilisées (optionnel)
 ```
 
 ---
 
 ## 🧪 Liste des TP
 
-| TP  | Thème principal                                  | Statut      |
-| --- | ------------------------------------------------ | ----------- |
-| TP1 | Yocto, boot réseau, noyau, rootfs, GPIO, modules | ✅ Terminé   |
-| TP2 | *(à venir)*                                      | 🔜 En cours |
+| TP           | Thème principal                                  | Statut      |
+|--------------| ------------------------------------------------ | ----------- |
+| [TP1](./tp1) | Yocto, boot réseau, noyau, rootfs, GPIO, modules | ✅ Terminé   |
+| [TP2](./tp2) | Périphériques d'entrée/sortie sous Linux embarqué (LED, boutons, joystick, LCD) | ✅ Terminé |
+| TP3          | *(à venir)*                                      | 🔜 En cours |
 ---
 
 ## 🛠 Prérequis techniques
