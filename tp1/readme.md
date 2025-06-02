@@ -169,7 +169,6 @@ No init found. Try passing init= option to kernel. Panic - not syncing: Attempte
 1. Copier `zImage` dans `/tftpboot/kernel.img`
 2. Extraire `core-image-base-joypinote.tar.bz2` dans `/tftpboot/rootfs`
 3. Vérifier la présence de `/sbin/init` (souvent un lien vers `busybox`)
-4. Configurer `udhcpd` pour l’interface `ttyUSB0` afin que la cible obtienne une IP via DHCP
 
 ### Question 2.4 — Description complète du processus de boot
 
