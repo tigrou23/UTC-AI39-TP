@@ -33,11 +33,12 @@ Chaque TP est documenté avec un `readme.md` complet, des fichiers sources et sc
 
 ## 🧪 Liste des TP
 
-| TP           | Thème principal                                  | Statut      |
-|--------------| ------------------------------------------------ | ----------- |
-| [TP1](./tp1) | Yocto, boot réseau, noyau, rootfs, GPIO, modules | ✅ Terminé   |
-| [TP2](./tp2) | Périphériques d'entrée/sortie sous Linux embarqué (LED, boutons, joystick, LCD) | ✅ Terminé |
-| TP3          | *(à venir)*                                      | 🔜 En cours |
+| TP           | Thème principal                                                                                | Statut      |
+|--------------|------------------------------------------------------------------------------------------------| ----------- |
+| [TP1](./tp1) | Yocto, boot réseau, noyau, rootfs, GPIO, modules                                               | ✅ Terminé   |
+| [TP2](./tp2) | Périphériques d'entrée/sortie sous Linux embarqué (LED, boutons, joystick, LCD)                | ✅ Terminé |
+| [TP3](./tp3) | Programmation temps réel avec Xenomai, tâches, sémaphores, synchronisation, mesure de latence  | ✅ Terminé |
+| TP4          | *(à venir)*                                                                                    | 🔜 En cours |
 ---
 
 ## 🛠 Prérequis techniques
