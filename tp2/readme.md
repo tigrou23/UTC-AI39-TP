@@ -433,14 +433,85 @@ Appuyez sur les boutons KEY_0 ou KEY_1 pour allumer/éteindre les LED correspond
 
 ## ⏱️ Exercice 4 — Latence des temporisations avec nanosleep()
 
-Dans cet exercice, nous mesurons la latence réelle d’une attente théorique de 1 milliseconde répétée 10 000 fois.
+Cet exercice a pour but de mesurer l'évolution de la latence réelle d'une tâche périodique simple (1 ms de temporisation) lorsque le système est soumis à une charge CPU croissante. L'exercice permet d'évaluer la prédictibilité des temps de réveil d'une tâche sous différents niveaux de stress processeur, en utilisant des appels à `nanosleep()` et des horloges à haute précision via `clock_gettime()`.
 
 ---
 
-### 🧾 Code source `latency.c`
+### 📊 Question 4.1 — Temps totaux sans et avec charge CPU
+
+### ⚙️ Description du programme de base
+
+Le programme de base utilise une boucle de 10 000 itérations avec `nanosleep()` pour une pause de 1 ms par itération. Le temps total est mesuré à l'aide de `clock_gettime()` avec l'horloge `CLOCK_REALTIME`.
+
+### ✅ Compilation (cross-compilation Poky)
+
+```bash
+$ source /opt/poky/3.1.23/cortexa7thf-neon-vfpv4/environment-setup-cortexa7t2hf-neon-vfpv4-poky-linux-gnueabi
+$ $CC latency.c -o latency
+```
+
+### ⚖️ Exécution
+
+```bash
+$ ./latency
+```
+
+### 📊 Résultats (temps total)
+
+| Commande CPU       | Temps total (ms) |
+| ------------------ | ---------------- |
+| Sans stress        | ≈10 680 ms       |
+| `stress --cpu 100` | ≈13 370 ms       |
+| `stress --cpu 200` | ≈26 300 ms       |
+
+### 🤔 Interprétation
+
+* Sous charge CPU, le temps total augmente nettement.
+* Cela montre que la planification du noyau est moins réactive, dû au nombre important de threads actifs concurrents.
+* Les interruptions de timer sont retardées, ce qui rend `nanosleep()` imprécis.
+
+---
+
+### 📊 Question 4.2 — Analyse des latences min / max / moyenne
+
+### ✍️ Description de l'amélioration
+
+Le programme a été modifié pour mesurer, à chaque itération, la différence entre la durée observée du `nanosleep()` et la durée demandée (1 ms). Cela permet de calculer une **latence effective**.
+
+On conserve :
+
+* La latence minimale (`min`)
+* La latence maximale (`max`)
+* La moyenne (à partir de la somme cumulée `sum` divisée par `ITERATIONS`)
+
+### 📊 Résultats obtenus
+
+| Charge CPU         | Latence min (us) | Latence max (us) | Latence moyenne (us) |
+| ------------------ | ---------------- | ---------------- | -------------------- |
+| Sans stress        | 61               | 176              | 66.9                 |
+| `stress --cpu 100` | 21               | 69 418           | 335.8                |
+| `stress --cpu 200` | 26               | 404 738          | 1 631.4              |
+
+### 📝 Analyse et conclusions
+
+* Plus la charge CPU augmente, plus la latence max explose.
+* La moyenne augmente elle aussi de façon significative.
+* Sous forte charge, le réveil d'une tâche planifiée par `nanosleep()` devient imprévisible.
+
+### 🔧 Solutions potentielles pour réduire les latences
+
+* Utiliser un ordonnanceur temps réel via `sched_setscheduler()` (ex : `SCHED_FIFO`).
+* Fixer l'affinité CPU avec `sched_setaffinity()` pour éviter la migration de processus.
+* Utiliser `CLOCK_MONOTONIC_RAW` pour éviter les sauts d'horloge réglés par NTP.
+* Dédier un coeur à la tâche ?
+* Utiliser des timers matériels ou des mécanismes comme `timerfd`.
+
+---
+
+### 📄 Question 4.3 — Code source complet
 
 ```c
-#define _GNU_SOURCE           // Active certaines extensions POSIX/GNU (utile ici pour clock_gettime)
+#define _GNU_SOURCE          // Active certaines extensions POSIX/GNU (utile ici pour clock_gettime)
 #include <stdio.h>           // Pour printf()
 #include <stdlib.h>          // Pour EXIT_SUCCESS, EXIT_FAILURE
 #include <time.h>            // Pour struct timespec, clock_gettime(), nanosleep()
@@ -511,88 +582,12 @@ int main(void)
 
 ---
 
-### ⚙️ Compilation croisée et exécution
+### 🔬 Pistes de prolongement
 
-```bash
-$ source /opt/poky/3.1.23/cortexa7thf-neon-vfpv4/environment-setup-cortexa7t2hf-neon-vfpv4-poky-linux-gnueabi
-$ $CC latency.c -o latency
-$ scp latency root@joypinote:/home/root/tp2/
-$ ssh root@joypinote
-root@joypinote:~/tp2# ./latency
-```
-
----
-
-### 📊 Résultats observés
-
-#### 🔹 Sans charge CPU :
-
-```
-Temps total : 10681.06 ms
-Latence min : 61 µs
-Latence max : 176 µs
-Latence moy : 66.9 µs
-```
-
-#### 🔹 Avec stress --cpu 100 :
-
-```bash
-root@joypinote:~/tp2# stress --cpu 100
-```
-
-```
-Temps total : 13370.64 ms
-Latence min : 21 µs
-Latence max : 69418 µs
-Latence moy : 335.8 µs
-```
-
-#### 🔹 Avec stress --cpu 200 :
-
-```bash
-root@joypinote:~/tp2# stress --cpu 200
-```
-
-```
-Temps total : 26326.57 ms
-Latence min : 26 µs
-Latence max : 404738 µs
-Latence moy : 1631.4 µs
-```
-
----
-
-#### ❓ Pourquoi les latences augmentent-elles avec `stress --cpu` ?
-
-Lorsque le système est sous forte charge (`stress --cpu 100` ou `200`), les appels système comme `nanosleep()` deviennent moins précis, car :
-
-* Le processeur est monopolisé par d’autres processus gourmands en CPU,
-* Le scheduler Linux doit arbitrer entre plusieurs centaines de threads actifs,
-* Les délais de traitement des interruptions (timers) sont allongés.
-
-➡️ En pratique, plus le nombre de threads `stress` est élevé, plus le **temps entre le réveil prévu et le réveil réel** est perturbé.
-
-#### ❓ Pourquoi `stress --cpu 1` n’a pas d’impact significatif ?
-
-Avec `stress --cpu 1`, un seul thread consomme 100 % d’un cœur logique. Or la Joy-Pi Note dispose de plusieurs cœurs :
-
-* Le processus `latency` est planifié sur un autre cœur,
-* Il n’y a pas de concurrence directe sur le même CPU,
-* Les interruptions sont encore traitées rapidement.
-
-🧠 À retenir : **le multitâche n’affecte la latence que lorsqu’il devient massif**.
-
----
-
-### 📚 Analyse 
-
-Ce test illustre que :
-
-* `nanosleep()` n’est pas fiable en contexte temps réel sous forte charge CPU,
-* la mesure de la latence est un indicateur fondamental de la **prédictibilité** d’un système,
-* des outils comme `stress` permettent de simuler des situations extrêmes pour mieux caractériser le comportement du noyau.
-
-🧩 Prolongement : écrire un script ou programme qui génère un **histogramme des latences** selon la charge CPU. Cela permettrait d’avoir une visualisation statistique fine.
+* Automatiser les mesures avec un script bash qui teste plusieurs niveaux de stress (`stress --cpu N` avec N variant).
+* Générer un histogramme des latences avec gnuplot ou Python matplotlib.
+* Implémenter une version avec `timerfd_create()` ou `clock_nanosleep()` pour comparer.
+* Tester sur un système Xenomai avec `rt_task_sleep()` pour observer le gain de précision.
 
 ---
 
@@ -605,7 +600,7 @@ Dans cet exercice, nous interagissons avec deux périphériques accessibles via 
 
 ---
 
-### 🔍 Inspection des périphériques d’entrée
+### 🔍 5.1 Inspection des périphériques d’entrée
 
 ```bash
 # Liste des périphériques d'entrée
@@ -629,17 +624,42 @@ H: Handlers=js0 event1
 
 ---
 
-### 🖼️ Affichage test sur l’écran LCD
+### 🌎 Question 5.2 — Caractéristiques du joystick
+
+* Il s'agit d'un **périphérique d'entrée analogique**, comme les boutons, mais générant des événements `EV_ABS` pour les mouvements sur les axes `ABS_X` (horizontal) et `ABS_Y` (vertical).
+* Il transmet des données via des structures `input_event`, lues avec `read()`.
+
+---
+
+### 📃 LCD : test d'écriture depuis la ligne de commande
+
+Le périphérique LCD est accessible via :
+
+```bash
+/dev/lcd
+```
+
+On peut tester son fonctionnement avec :
 
 ```bash
 echo "Hello" > /dev/lcd
 ```
 
-✅ Si le texte s’affiche correctement, l’écran LCD est bien fonctionnel.
+Si l'affichage réagit, le lien avec le LCD fonctionne.
 
 ---
 
-### 🧾 Code source `joylcd.c`
+### 📄 Question 5.3 — Commande utilisée pour écrire sur le LCD
+
+```bash
+echo "Texte test" > /dev/lcd
+```
+
+Cela permet d'afficher du texte statique sur l'écran.
+
+---
+
+## 📑 Question 5.4 — Code source complet `joylcd.c`
 
 ```c
 #define _GNU_SOURCE               // Active certaines extensions POSIX/GNU (par ex. pour open())
