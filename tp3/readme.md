@@ -1,6 +1,6 @@
 # Compte Rendu TP3 - Systèmes Temps Réel avec Xenomai (MI11 / AI39 - Printemps 2025)
 
-[Sujet du TP 3](./TP3_sujet.pdf)
+> [Ce compte rendu a été converti de notre readme (en markdown) en PDF. Nous vous conseillons de visionner notre rapport sur ce lien](https://github.com/tigrou23/UTC-AI39-TP/tree/main/tp3)
 
 **Nom :** [Hugo Pereira](https://github.com/tigrou23) & Maher Zizouni
 
@@ -12,17 +12,118 @@
 
 ---
 
-## 📘 Exercice 1 – Mise en place de Xenomai
+## 🛠️ Exercice 1 : Mise en place de Xenomai avec Yocto
 
-`TODO`
+### ❓ Question 1.1 — Génération d'une core-image-base avec Xenomai
 
-`TODO checker les codes avec ceux sur discord`
+### 🔧 Prérequis
+
+* Environnement Yocto fonctionnel (Poky)
+* BSP `joypinote-xenomai` disponible
+* Toolchain déjà installée (pas besoin de la régénérer)
+
+### ✅ Étapes de construction
+
+1. **Initialisation de l'environnement de build** :
+
+```bash
+cd /opt/mi11/poky
+source ../poky-dunfell-23.0.23/oe-init-build-env
+```
+
+2. **Définir la machine cible dans `conf/local.conf`** :
+
+```bash
+MACHINE = "joypinote-xenomai"
+```
+
+3. **(Optionnel) Vérification de la présence de Xenomai dans les couches** :
+
+```bash
+bitbake-layers show-layers
+```
+
+4**Compilation de l'image avec Xenomai** :
+
+```bash
+bitbake core-image-base
+```
+
+Cette commande génère :
+
+* Le noyau Linux patché avec I-Pipe (pour Xenomai)
+* Le système racine (rootfs)
+* Le bootloader
+
+### 📁 Fichiers générés
+
+Les fichiers sont disponibles dans :
+
+```bash
+build/tmp/deploy/images/joypinote-xenomai/
+```
+
+Exemples typiques :
+
+* `zImage` ou `Image`
+* `core-image-base-joypinote-xenomai.tar.bz2`
+* `devicetree.dtb`
+
+### 📏 Comparaison de la taille des noyaux
+
+Comparer avec un noyau Yocto standard :
+
+```bash
+ls -lh build/tmp/deploy/images/joypinote-xenomai/zImage
+```
+
+Le noyau avec Xenomai est généralement plus volumineux (\~1–2 Mo de plus) à cause du patch I-Pipe et des options de debug temps réel.
+
+---
+
+### ❓ Question 1.2 — Mise en place sur la cible
+
+### 🧾 Fichiers à transférer sur notre joypinote (via TFTP/NFS selon configuration)
+
+* Bootloader
+* Noyau : `zImage` ou `Image`
+* Device Tree : `*.dtb`
+* RootFS : `core-image-base-joypinote-xenomai.tar.bz2`
+
+### ✅ Vérification du bon fonctionnement de Xenomai
+
+1. Vérifier que le noyau est bien patché :
+
+```bash
+dmesg | grep xenomai
+```
+
+2. Lancer le benchmark temps réel fourni :
+
+```bash
+latency
+```
+
+Xenomai est bien actif, on peut voir des mesures de latence très faibles (<10 µs), sans erreurs.
+
+---
+
+### ✅ Conclusion
+
+* La configuration `joypinote-xenomai` permet de produire une image embarquée avec le noyau temps réel Xenomai
+* La vérification s’effectue à l’aide des outils comme `latency` et `dmesg`
+* La configuration du bootloader et le transfert correct des fichiers sont essentiels au démarrage
+
+| Étape                  | Détail                                 |
+| ---------------------- | -------------------------------------- |
+| Configuration MACHINE  | `joypinote-xenomai`                    |
+| Image cible            | `core-image-base`                      |
+| Déploiement            | Fichiers `Image`, `*.dtb`, `rootfs` |
+| Test de fonctionnement | Exécution de `latency`                 |
 
 ---
 
 ## 📘 Exercice 2 – Manipulation de Tâches Temps Réel
-
----
 
 ### 🧩 Objectif
 
@@ -30,7 +131,7 @@ L'objectif est de créer un programme `Hello World` sous Xenomai, de le faire é
 
 ---
 
-## ❓ Question 2.1 : Ce code s’exécute-t-il de façon temps réel ? Comment le vérifier ?
+### ❓ Question 2.1 : Ce code s’exécute-t-il de façon temps réel ? Comment le vérifier ?
 
 Le code de base :
 
@@ -72,7 +173,7 @@ cat /proc/xenomai/sched/rt/threads
 
 ---
 
-## ❓ Question 2.2 : Donnez le code du programme. Est-il vraiment temps réel et pourquoi ? Que donne le fichier de statistiques de Xenomai ?
+### ❓ Question 2.2 : Donnez le code du programme. Est-il vraiment temps réel et pourquoi ? Que donne le fichier de statistiques de Xenomai ?
 
 ### Code avec Xenomai (mais encore POSIX `sleep` et `printf`) :
 
@@ -124,7 +225,7 @@ int main(void) {
 
 ---
 
-## ❓ Question 2.3 : Donnez le code avec `rt_task_sleep`
+### ❓ Question 2.3 : Donnez le code avec `rt_task_sleep`
 
 ```c
 /**
@@ -185,7 +286,7 @@ Le programme :
 
 ---
 
-## ❓ Question 2.4 : Remplacez `printf` par `rt_printf` et interprétez les résultats
+### ❓ Question 2.4 : Remplacez `printf` par `rt_printf` et interprétez les résultats
 
 ### Finalisation du code :
 
@@ -231,7 +332,7 @@ Les fichiers /proc/xenomai/sched/rt/threads et /proc/xenomai/stat ont confirmé 
 ---
 
 
-# Exercice 3 – Synchronisation de Tâches avec sémaphores
+## Exercice 3 – Synchronisation de Tâches avec sémaphores
 
 ## ⚙️ Question 3.1 : Code et Résultat initial
 
@@ -617,6 +718,10 @@ Latence max : 10 µs
 Latence moy : 6.7 µs
 ```
 
+On peut conclure que les latences sont très faibles (< 10 µs). Le comportement est hautement prédictible
+
+On peut donc dire que Xenomai offre une granularité fine et stable, même pour 10 000 temporisations
+
 ---
 
 ### 🧪 Question 4.3 — Résultats avec CPU chargé
@@ -634,6 +739,14 @@ stress --cpu 100
 | 100        | 5                | 12               | 7.3              |
 | 200        | 6                | 10               | 7.2              |
 | 300        | 6                | 11               | 7.2              |
+
+### Analyse
+
+Les latences restent extrêmement faibles et stables, même avec stress.
+
+Le mécanisme temps réel de Xenomai garantit l'exécution à temps malgré la charge.
+
+Contrairement à Linux standard, les temporisations ne se dégradent pas sous charge CPU.
 
 **Conclusion :**
 Même sous charge CPU importante, la latence reste faible et stable, ce qui prouve l’efficacité du noyau temps réel de Xenomai pour garantir des délais déterministes.
