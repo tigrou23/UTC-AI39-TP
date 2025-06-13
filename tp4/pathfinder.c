@@ -11,6 +11,7 @@
 
 RT_SEM start_sem;
 RT_SEM resource_sem;
+RT_SEM distrib_done_sem;
 
 typedef struct task_descriptor{
   RT_TASK task;
