@@ -62,12 +62,13 @@ void rt_task(void *cookie) {
 
     while(1) {
         rt_task_wait_period(NULL);
+	float start_time = ms_time_since_start();
         if(params->use_resource) acquire_resource();
         rt_printf("doing %s\n",rt_task_name());
         busy_wait(params->duration);
-        rt_printf("doing %s ok\n",rt_task_name());
+	float end_time = ms_time_since_start();
+        rt_printf("[%.3f ms] finished %s\n", end_time, rt_task_name());
         if(params->use_resource) release_resource();
-       
     }
 }
 
