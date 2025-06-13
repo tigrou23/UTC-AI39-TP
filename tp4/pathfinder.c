@@ -9,9 +9,13 @@
 #define TASK_MODE T_JOINABLE
 #define TASK_STKSZ 0
 
+#define SAFE_METEO
+
 RT_SEM start_sem;
 RT_SEM resource_sem;
 RT_SEM distrib_done_sem;
+
+
 
 typedef struct task_descriptor{
   RT_TASK task;
@@ -235,7 +239,13 @@ int main(void) {
 struct task_descriptor METEO = {
     .task_function = rt_task_default,
     .period = 5000000000,
-    .duration = 40000000,
+
+#ifdef SAFE_METEO
+.duration = 40000000, // 40 ms
+#else
+.duration = 60000000, // 60 ms → trop long
+#endif,
+
     .priority = 1,
     .use_resource = true
   };
