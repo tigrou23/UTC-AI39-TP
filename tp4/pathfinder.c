@@ -62,11 +62,11 @@ void rt_task(void *cookie) {
 
     while(1) {
         rt_task_wait_period(NULL);
-	float start_time = ms_time_since_start();
+	      float start_time = ms_time_since_start();
         if(params->use_resource) acquire_resource();
         rt_printf("doing %s\n",rt_task_name());
         busy_wait(params->duration);
-	float end_time = ms_time_since_start();
+	      float end_time = ms_time_since_start();
         rt_printf("[%.3f ms] finished %s\n", end_time, rt_task_name());
         if(params->use_resource) release_resource();
     }
@@ -106,9 +106,9 @@ int main(void) {
   // Définir les tâches ici
   struct task_descriptor ORDO_BUS = {
     .task_function = rt_task,
-    .period = 40000000,
-    .duration = 5000000,
-    .priority = 20,
+    .period = 125000000,
+    .duration = 25000000,
+    .priority = 7,
     .use_resource = false
   };
 
@@ -119,9 +119,19 @@ int main(void) {
     return EXIT_FAILURE;
   }
 
-  rt_sem_broadcast(&start_sem); // Libère toutes les tâches
   rt_printf("started main program at %.3fms\n", ms_time_since_start());
+
+  rt_sem_broadcast(&start_sem); // Libère toutes les tâches
+
+
+      // Boucle infinie pour maintenir le contexte actif
+    while (1) {
+        rt_task_sleep(1e9); // Attente 1 seconde
+    }
+    
   rt_sem_delete(&start_sem);
+
+
    
   return EXIT_SUCCESS;
 }
