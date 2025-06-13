@@ -78,15 +78,19 @@ void distrib_donnees_task(void *cookie) {
 
     while (1) {
         rt_task_wait_period(NULL);
-        float start_time = ms_time_since_start();
-        rt_printf("[%.3f ms] START %s\n", start_time, rt_task_name());
-
+	    
         if (params->use_resource) acquire_resource();
+	            float start_time = ms_time_since_start();
+
+	            rt_printf("[%.3f ms] START %s\n", start_time, rt_task_name());
+
         busy_wait(params->duration);
+        float end_time = ms_time_since_start();
+
+        rt_printf("[%.3f ms] END %s\n", end_time, rt_task_name());
+
         if (params->use_resource) release_resource();
 
-        float end_time = ms_time_since_start();
-        rt_printf("[%.3f ms] END %s\n", end_time, rt_task_name());
 
         rt_sem_v(&distrib_done_sem); // signal de complétion
     }
@@ -111,15 +115,17 @@ void ordo_bus_task(void *cookie) {
             exit(EXIT_FAILURE);
         }
 
-        float start_time = ms_time_since_start();
-        rt_printf("[%.3f ms] START %s\n", start_time, rt_task_name());
 
         if (params->use_resource) acquire_resource();
+	    
+        float start_time = ms_time_since_start();
+        rt_printf("[%.3f ms] START %s\n", start_time, rt_task_name());
         busy_wait(params->duration);
+	            float end_time = ms_time_since_start();
+        rt_printf("[%.3f ms] END %s\n", end_time, rt_task_name());
         if (params->use_resource) release_resource();
 
-        float end_time = ms_time_since_start();
-        rt_printf("[%.3f ms] END %s\n", end_time, rt_task_name());
+
     }
 }
 
@@ -135,15 +141,17 @@ void rt_task_default(void *cookie) {
     while (1) {
         rt_task_wait_period(NULL);
 
-        float start_time = ms_time_since_start();
-        rt_printf("[%.3f ms] START %s\n", start_time, rt_task_name());
+
 
         if (params->use_resource) acquire_resource();
+	            float start_time = ms_time_since_start();
+        rt_printf("[%.3f ms] START %s\n", start_time, rt_task_name());
         busy_wait(params->duration);
+	            float end_time = ms_time_since_start();
+        rt_printf("[%.3f ms] END %s\n", end_time, rt_task_name());
         if (params->use_resource) release_resource();
 
-        float end_time = ms_time_since_start();
-        rt_printf("[%.3f ms] END %s\n", end_time, rt_task_name());
+
     }
 }
 ///////////////////////////////////////////////////////////
