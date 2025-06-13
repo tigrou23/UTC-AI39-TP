@@ -10,6 +10,7 @@
 #define TASK_STKSZ 0
 
 RT_SEM start_sem;
+RT_SEM resource_sem;
 
 typedef struct task_descriptor{
   RT_TASK task;
@@ -118,8 +119,6 @@ int create_and_start_rt_task(struct task_descriptor* desc,RTIME first_release_po
 int main(void) {  
   
   RTIME first_release_point = rt_timer_read() + 15000000;
-	
-  RT_SEM resource_sem;
 
   if (rt_sem_create(&start_sem, "start_semaphore", 0, S_PRIO) != 0) {
     printf("error creating start_semaphore\n");
