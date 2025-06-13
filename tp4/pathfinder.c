@@ -106,7 +106,7 @@ void ordo_bus_task(void *cookie) {
         rt_task_wait_period(NULL);
 
         // attente du sémaphore (doit avoir été donné par DISTRIB_DONNEES)
-        if (rt_sem_p(&distrib_done_sem, TM_NONBLOCK) != 0) {
+        if (rt_sem_p(&distrib_done_sem, TM_NONBLOCK) == -EWOULDBLOCK) {
             rt_printf("RESET SYSTEM: DISTRIB_DONNEES NON EXECUTÉE\n");
             exit(EXIT_FAILURE);
         }
