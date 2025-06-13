@@ -64,37 +64,89 @@ void busy_wait(RTIME duration_ns) {
     } while ((current_xtime - start_xtime) < duration_ns);
 }
 
-
 ///////////////////////////////////////////////////////////
-void rt_task(void *cookie) { 
+// Spécifique à DISTRIB_DONNEES avec signal de complétion
+void distrib_donnees_task(void *cookie) {
     struct task_descriptor* params = (struct task_descriptor*)cookie;
 
     rt_printf("started task %s, period %ims, duration %ims, use resource %i\n",
-              rt_task_name(),
-              (int)(params->period / 1000000),
-              (int)(params->duration / 1000000),
-              params->use_resource);
+              rt_task_name(), (int)(params->period / 1000000),
+              (int)(params->duration / 1000000), params->use_resource);
 
     rt_sem_p(&start_sem, TM_INFINITE);
 
     while (1) {
         rt_task_wait_period(NULL);
-        
         float start_time = ms_time_since_start();
         rt_printf("[%.3f ms] START %s\n", start_time, rt_task_name());
 
         if (params->use_resource) acquire_resource();
-
         busy_wait(params->duration);
+        if (params->use_resource) release_resource();
 
         float end_time = ms_time_since_start();
         rt_printf("[%.3f ms] END %s\n", end_time, rt_task_name());
 
-        if (params->use_resource) release_resource();
+        rt_sem_v(&distrib_done_sem); // signal de complétion
     }
 }
 
+// Spécifique à ORDO_BUS avec vérification du signal
+void ordo_bus_task(void *cookie) {
+    struct task_descriptor* params = (struct task_descriptor*)cookie;
+
+    rt_printf("started task %s, period %ims, duration %ims, use resource %i\n",
+              rt_task_name(), (int)(params->period / 1000000),
+              (int)(params->duration / 1000000), params->use_resource);
+
+    rt_sem_p(&start_sem, TM_INFINITE);
+
+    while (1) {
+        rt_task_wait_period(NULL);
+
+        // attente du sémaphore (doit avoir été donné par DISTRIB_DONNEES)
+        if (rt_sem_p(&distrib_done_sem, TM_NONBLOCK) != 0) {
+            rt_printf("RESET SYSTEM: DISTRIB_DONNEES NON EXECUTÉE\n");
+            exit(EXIT_FAILURE);
+        }
+
+        float start_time = ms_time_since_start();
+        rt_printf("[%.3f ms] START %s\n", start_time, rt_task_name());
+
+        if (params->use_resource) acquire_resource();
+        busy_wait(params->duration);
+        if (params->use_resource) release_resource();
+
+        float end_time = ms_time_since_start();
+        rt_printf("[%.3f ms] END %s\n", end_time, rt_task_name());
+    }
+}
+
+void rt_task_default(void *cookie) {
+    struct task_descriptor* params = (struct task_descriptor*)cookie;
+
+    rt_printf("started task %s, period %ims, duration %ims, use resource %i\n",
+              rt_task_name(), (int)(params->period / 1000000),
+              (int)(params->duration / 1000000), params->use_resource);
+
+    rt_sem_p(&start_sem, TM_INFINITE);
+
+    while (1) {
+        rt_task_wait_period(NULL);
+
+        float start_time = ms_time_since_start();
+        rt_printf("[%.3f ms] START %s\n", start_time, rt_task_name());
+
+        if (params->use_resource) acquire_resource();
+        busy_wait(params->duration);
+        if (params->use_resource) release_resource();
+
+        float end_time = ms_time_since_start();
+        rt_printf("[%.3f ms] END %s\n", end_time, rt_task_name());
+    }
+}
 ///////////////////////////////////////////////////////////
+
 int create_and_start_rt_task(struct task_descriptor* desc,RTIME first_release_point,char* name) {
     int status=rt_task_create(&desc->task,name,TASK_STKSZ,desc->priority,TASK_MODE);
     if(status!=0) {
@@ -120,16 +172,13 @@ int main(void) {
   
   RTIME first_release_point = rt_timer_read() + 15000000;
 
-  if (rt_sem_create(&start_sem, "start_semaphore", 0, S_PRIO) != 0) {
-    printf("error creating start_semaphore\n");
-    return EXIT_FAILURE;
-  }
-
-  // Initialisation du sémaphore pour la ressource critique (bus 1553)
-  if (rt_sem_create(&resource_sem, "bus_1553", 1, S_PRIO) != 0) {
-    printf("error creating resource semaphore\n");
-    return EXIT_FAILURE;
-  }
+    // Création des sémaphores
+    if (rt_sem_create(&start_sem, "start_semaphore", 0, S_PRIO) != 0 ||
+        rt_sem_create(&resource_sem, "bus_1553", 1, S_PRIO) != 0 ||
+        rt_sem_create(&distrib_done_sem, "distrib_done_sem", 0, S_PRIO) != 0) {
+        printf("error creating semaphores\n");
+        return EXIT_FAILURE;
+    }
 
   // Définir les tâches ici
   struct task_descriptor ORDO_BUS = {
