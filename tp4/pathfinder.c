@@ -244,7 +244,7 @@ struct task_descriptor METEO = {
 .duration = 40000000, // 40 ms
 #else
 .duration = 60000000, // 60 ms → trop long
-#endif,
+#endif
 
     .priority = 1,
     .use_resource = true
