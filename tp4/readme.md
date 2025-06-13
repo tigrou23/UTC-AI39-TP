@@ -1,3 +1,10 @@
+
+## Question 4 — `rt_task_name`, `RT_TASK_INFO` et `threadobj_stat`
+
+TODOOOOOOOOO
+
+
+
 # Compte Rendu TP4 - Analyse Temps Réel sous Xenomai (Pathfinder) (MI11 / AI39 - Printemps 2025)
 
 > [Ce compte rendu a été converti de notre readme (en markdown) en PDF. Nous vous conseillons de visionner notre rapport sur ce lien](https://github.com/tigrou23/UTC-AI39-TP/tree/main/tp4)
@@ -196,68 +203,57 @@ create_and_start_rt_task(&ORDO_BUS, first_release_point, "ORDO_BUS");
 
 ## Question 4 — `rt_task_name`, `RT_TASK_INFO` et `threadobj_stat`
 
-### `rt_task_name()`
-
-Cette fonction retourne le **nom de la tâche temps réel courante**. Son implémentation repose sur :
-
-```c
-static RT_TASK_INFO info;
-rt_task_inquire(NULL, &info);
-return info.name;
-```
-
-Elle utilise :
-
-* `rt_task_inquire(NULL, &info)` : récupère les infos de la tâche appelante.
-* `info.name` : champ contenant le nom assigné à la tâche lors de sa création avec `rt_task_create()`.
+TODOOOOOOOOO
 
 ---
 
-### Contenu de la structure `RT_TASK_INFO`
+## Question 5
 
-La structure `RT_TASK_INFO` est définie dans `/include/alchemy/task.h`. Elle contient :
+### Simulation précise avec `xtime`
+
+On utilise le champ `xtime` ("execution time") de la structure `threadobj_stat` pour garantir que le `busy_wait()` correspond bien à **du temps CPU consommé effectif**, même en cas de préemption.
+
+### 🔍 Détails techniques
+
+`RT_TASK_INFO` est une structure retournée par `rt_task_inquire()` :
 
 ```c
-typedef struct rt_task_info {
-  char name[XNOBJECT_NAME_LEN];
-  unsigned long period;
-  RTIME exectime_period;
-  RTIME exectime_total;
-  long policy;
-  long prio;
-  pid_t pid;
-  int status;
-  ...
-} RT_TASK_INFO;
+struct RT_TASK_INFO {
+    int prio;                      // priorité de la tâche
+    struct threadobj_stat stat;   // structure contenant xtime
+    char name[XNOBJECT_NAME_LEN]; // nom de la tâche
+    pid_t pid;                    // PID associé à la tâche
+};
 ```
 
-🔸 Champs utiles :
+La structure `threadobj_stat`, issue de `include/alchemy/task.h`, contient notamment le champ :
 
-* `name` : nom de la tâche
-* `period` : période en ns
-* `prio` : priorité effective
-* `status` : état (actif, en attente, dormant…)
-* `exectime_total` : temps total d’exécution (utile pour analyser la charge CPU)
+```c
+RTIME xtime; // temps CPU cumulé utilisé par la tâche
+```
 
+### 🛠️ Implémentation
+
+```c
+#include <alchemy/task.h>
+
+void busy_wait(RTIME duration_ns) {
+    RT_TASK_INFO info;
+
+    if (rt_task_inquire(NULL, &info) != 0) {
+        rt_printf("Error: cannot retrieve task info\n");
+        return;
+    }
+
+    RTIME start_xtime = info.stat.xtime;
+    RTIME current_xtime;
+
+    do {
+        rt_task_inquire(NULL, &info);
+        current_xtime = info.stat.xtime;
+    } while ((current_xtime - start_xtime) < duration_ns);
+}
+```
 ---
 
-### `threadobj_stat`
 
-Cette structure interne est utilisée dans l’implémentation de Xenomai pour représenter **l’état global d’un thread noyau temps réel**.
-
-Elle contient, selon le noyau Xenomai utilisé :
-
-* Infos de synchronisation (mutex, semaphores, events)
-* Horodatages de réveil / blocage
-* Liens vers les ressources associées
-
-Elle est utilisée pour :
-
-* Le **debug bas-niveau**
-* La **planification fine**
-* Les **statistiques de performance**
-
-On la retrouve dans les headers internes (`kernel/include/xenomai/`).
-
-
-   
