@@ -186,7 +186,7 @@ Ces deux mécanismes (`first_release_point` et `start_sem`) sont donc cruciaux p
    return EXIT_SUCCESS;
    ```
 
-### 🛰️ Ajout de la tâche : ORDO\_BUS
+### Ajout de la tâche : ORDO\_BUS
 
 ```c
 struct task_descriptor ORDO_BUS = {
@@ -232,7 +232,7 @@ La structure `threadobj_stat`, issue de `include/alchemy/task.h`, contient notam
 RTIME xtime; // temps CPU cumulé utilisé par la tâche
 ```
 
-### 🛠️ Implémentation
+### Implémentation
 
 ```c
 #include <alchemy/task.h>
@@ -256,9 +256,9 @@ void busy_wait(RTIME duration_ns) {
 ```
 ---
 
-## 📈 Résultat observé (Question 6)
+## Résultat observé (Question 6)
 
-### 🔧 Données d’exécution
+### Données d’exécution
 
 ```
 started task ORDO_BUS, period 125ms, duration 25ms, use resource 0
@@ -279,8 +279,54 @@ started main program at 0.000ms
 [774.986 ms] END ORDO_BUS
 ```
 
-### ✅ Analyse temporelle
+### Analyse temporelle
 
 * Le **périodicité de 125ms** est respectée avec un excellent degré de précision (écarts < 0.05 ms).
 * Le **temps d'exécution de 25ms** est atteint quasiment exactement à chaque fois.
 * Le **démarrage** de la première tâche correspond bien à un `first_release_point` global et à un `rt_sem_p()`.
+
+---
+
+## Question 7 : Ajout de tâches avec accès concurrent à une ressource critique (bus 1553)
+
+Pour gérer l’accès au **bus 1553** (ressource critique), on utilise un **sémaphore binaire** Xenomai :
+
+```c
+RT_SEM resource_sem;
+```
+
+### 🧩 Initialisation du sémaphore
+
+```c
+rt_sem_create(&resource_sem, "bus_1553", 1, S_PRIO);
+```
+
+* Valeur initiale : `1` → la ressource est disponible
+* Type : `S_PRIO` → prioritaire, pour éviter les inversions de priorité
+
+### Accès à la ressource
+
+```c
+void acquire_resource(void) {
+  rt_sem_p(&resource_sem, TM_INFINITE);
+}
+
+void release_resource(void) {
+  rt_sem_v(&resource_sem);
+}
+```
+
+### Tests fonctionnels
+
+* Plusieurs tâches peuvent maintenant demander à accéder à la **même ressource critique**.
+* Les accès sont **mutuellement exclusifs** grâce au sémaphore.
+* L’enchaînement des tâches dépend de la priorité et de la disponibilité de la ressource.
+
+### Étapes ajoutées dans `main()`
+
+* Création du `resource_sem`
+* Définition et lancement des tâches supplémentaires accédant au bus avec `use_resource = true`
+
+
+
+
