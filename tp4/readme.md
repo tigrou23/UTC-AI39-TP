@@ -5,6 +5,13 @@ TODOOOOOOOOO
 
 
 
+## Question 8
+
+TODOOOOOOOOO
+
+TOTO mettre les remarques du prof
+
+
 # Compte Rendu TP4 - Analyse Temps Réel sous Xenomai (Pathfinder) (MI11 / AI39 - Printemps 2025)
 
 > [Ce compte rendu a été converti de notre readme (en markdown) en PDF. Nous vous conseillons de visionner notre rapport sur ce lien](https://github.com/tigrou23/UTC-AI39-TP/tree/main/tp4)
@@ -295,7 +302,7 @@ Pour gérer l’accès au **bus 1553** (ressource critique), on utilise un **sé
 RT_SEM resource_sem;
 ```
 
-### 🧩 Initialisation du sémaphore
+### Initialisation du sémaphore
 
 ```c
 rt_sem_create(&resource_sem, "bus_1553", 1, S_PRIO);
@@ -327,6 +334,238 @@ void release_resource(void) {
 * Création du `resource_sem`
 * Définition et lancement des tâches supplémentaires accédant au bus avec `use_resource = true`
 
+### Tests fonctionnels
+
+* Plusieurs tâches peuvent maintenant demander à accéder à la **même ressource critique**.
+* Les accès sont **mutuellement exclusifs** grâce au sémaphore.
+* L’enchaînement des tâches dépend de la priorité et de la disponibilité de la ressource.
+
+### Résultats expérimentaux
+
+```
+root@joypinote-xenomai:~/tp4# ./pathfinder 
+started task ORDO_BUS, period 125ms, duration 25ms, use resource 0
+started task DISTRIB_DONNEES, period 125ms, duration 25ms, use resource 1
+started task PILOTAGE, period 250ms, duration 25ms, use resource 1
+started task RADIO, period 250ms, duration 25ms, use resource 0
+started task CAMERA, period 250ms, duration 25ms, use resource 0
+started task MESURES, period 5000ms, duration 50ms, use resource 1
+started task METEO, period 5000ms, duration 40ms, use resource 1
+started main program at 0.000ms
+[0.056 ms] START ORDO_BUS
+[25.071 ms] END ORDO_BUS
+[25.093 ms] START DISTRIB_DONNEES
+[50.105 ms] END DISTRIB_DONNEES
+[50.121 ms] START PILOTAGE
+[75.134 ms] END PILOTAGE
+[75.149 ms] START RADIO
+[100.161 ms] END RADIO
+[100.177 ms] START CAMERA
+[124.975 ms] START ORDO_BUS
+[149.987 ms] END ORDO_BUS
+[150.000 ms] START DISTRIB_DONNEES
+[175.011 ms] END DISTRIB_DONNEES
+[175.242 ms] END CAMERA
+[175.258 ms] START MESURES
+[225.269 ms] END MESURES
+[225.284 ms] START METEO
+[249.977 ms] START ORDO_BUS
+[274.990 ms] END ORDO_BUS
+[275.002 ms] START DISTRIB_DONNEES
+[275.017 ms] START PILOTAGE
+[275.030 ms] START RADIO
+[300.043 ms] END RADIO
+[300.056 ms] START CAMERA
+[325.068 ms] END CAMERA
+[340.406 ms] END METEO
+[365.421 ms] END DISTRIB_DONNEES
+[374.974 ms] START ORDO_BUS
+[399.984 ms] END ORDO_BUS
+[399.997 ms] START DISTRIB_DONNEES
+[415.480 ms] END PILOTAGE
+[440.494 ms] END DISTRIB_DONNEES
+[499.982 ms] START ORDO_BUS
+[525.003 ms] END ORDO_BUS
+[525.019 ms] START DISTRIB_DONNEES
+[550.031 ms] END DISTRIB_DONNEES
+[550.045 ms] START PILOTAGE
+[575.058 ms] END PILOTAGE
+[575.072 ms] START RADIO
+[600.083 ms] END RADIO
+[600.096 ms] START CAMERA
+[624.974 ms] START ORDO_BUS
+[649.986 ms] END ORDO_BUS
+[649.998 ms] START DISTRIB_DONNEES
+[675.010 ms] END DISTRIB_DONNEES
+[675.160 ms] END CAMERA
+[749.982 ms] START ORDO_BUS
+[775.004 ms] END ORDO_BUS
+[775.018 ms] START DISTRIB_DONNEES
+[800.031 ms] END DISTRIB_DONNEES
+[800.045 ms] START PILOTAGE
+[825.057 ms] END PILOTAGE
+[825.069 ms] START RADIO
+[850.081 ms] END RADIO
+[850.094 ms] START CAMERA
+[874.973 ms] START ORDO_BUS
+[899.986 ms] END ORDO_BUS
+[899.998 ms] START DISTRIB_DONNEES
+[925.008 ms] END DISTRIB_DONNEES
+[925.157 ms] END CAMERA
+[999.982 ms] START ORDO_BUS
+[1025.002 ms] END ORDO_BUS
+[1025.018 ms] START DISTRIB_DONNEES
+[1050.031 ms] END DISTRIB_DONNEES
+[1050.045 ms] START PILOTAGE
+[1075.058 ms] END PILOTAGE
+[1075.071 ms] START RADIO
+[1100.083 ms] END RADIO
+[1100.096 ms] START CAMERA
+[1124.974 ms] START ORDO_BUS
+[1149.986 ms] END ORDO_BUS
+[1149.999 ms] START DISTRIB_DONNEES
+[1175.011 ms] END DISTRIB_DONNEES
+[1175.162 ms] END CAMERA
+[1249.981 ms] START ORDO_BUS
+[1275.002 ms] END ORDO_BUS
+[1275.017 ms] START DISTRIB_DONNEES
+[1300.028 ms] END DISTRIB_DONNEES
+[1300.042 ms] START PILOTAGE
+[1325.053 ms] END PILOTAGE
+[1325.067 ms] START RADIO
+[1350.079 ms] END RADIO
+[1350.091 ms] START CAMERA
+[1374.974 ms] START ORDO_BUS
+[1399.986 ms] END ORDO_BUS
+[1399.998 ms] START DISTRIB_DONNEES
+[1425.010 ms] END DISTRIB_DONNEES
+[1425.156 ms] END CAMERA
+[1499.982 ms] START ORDO_BUS
+[1525.002 ms] END ORDO_BUS
+[1525.018 ms] START DISTRIB_DONNEES
+[1550.031 ms] END DISTRIB_DONNEES
+[1550.045 ms] START PILOTAGE
+[1575.057 ms] END PILOTAGE
+[1575.070 ms] START RADIO
+[1600.081 ms] END RADIO
+[1600.094 ms] START CAMERA
+[1624.973 ms] START ORDO_BUS
+[1649.986 ms] END ORDO_BUS
+[1649.999 ms] START DISTRIB_DONNEES
+[1675.010 ms] END DISTRIB_DONNEES
+[1675.159 ms] END CAMERA
+```
+
+### Analyse
+
+* Les tâches critiques attendent leur tour correctement sans interférer.
+* Le **sémaphore binaire fonctionne comme verrou exclusif**, ce qui permet d’ordonner efficacement les accès concurrents.
+* Le **comportement temporel est stable**, sans famine ni inversion de priorité visible.
+
+---
+
+Question 8 — Implémentation du mécanisme de sécurité entre ORDO_BUS et DISTRIB_DONNEES
 
 
 
+
+
+root@joypinote-xenomai:~/tp4# ./pathfinder 
+started task ORDO_BUS, period 125ms, duration 25ms, use resource 0
+started task DISTRIB_DONNEES, period 125ms, duration 25ms, use resource 1
+started task PILOTAGE, period 250ms, duration 25ms, use resource 1
+started task RADIO, period 250ms, duration 25ms, use resource 0
+started task CAMERA, period 250ms, duration 25ms, use resource 0
+started task MESURES, period 5000ms, duration 50ms, use resource 1
+started task METEO, period 5000ms, duration 40ms, use resource 1
+started main program at 0.000ms
+[0.055 ms] START ORDO_BUS
+[25.070 ms] END ORDO_BUS
+[25.091 ms] START DISTRIB_DONNEES
+[50.103 ms] END DISTRIB_DONNEES
+[50.120 ms] START PILOTAGE
+[75.131 ms] END PILOTAGE
+[75.147 ms] START RADIO
+[100.158 ms] END RADIO
+[100.173 ms] START CAMERA
+[124.968 ms] START ORDO_BUS
+[149.980 ms] END ORDO_BUS
+[149.994 ms] START DISTRIB_DONNEES
+[175.006 ms] END DISTRIB_DONNEES
+[175.242 ms] END CAMERA
+[175.258 ms] START MESURES
+[225.268 ms] END MESURES
+[225.284 ms] START METEO
+[249.970 ms] START ORDO_BUS
+[274.981 ms] END ORDO_BUS
+[275.008 ms] START RADIO
+[300.018 ms] END RADIO
+[300.031 ms] START CAMERA
+[325.043 ms] END CAMERA
+[340.386 ms] END METEO
+[340.398 ms] START DISTRIB_DONNEES
+[365.410 ms] END DISTRIB_DONNEES
+[365.424 ms] START PILOTAGE
+[374.967 ms] START ORDO_BUS
+[399.979 ms] END ORDO_BUS
+[415.471 ms] END PILOTAGE
+[415.483 ms] START DISTRIB_DONNEES
+[440.494 ms] END DISTRIB_DONNEES
+[499.976 ms] START ORDO_BUS
+[524.998 ms] END ORDO_BUS
+[525.014 ms] START DISTRIB_DONNEES
+[550.026 ms] END DISTRIB_DONNEES
+[550.041 ms] START PILOTAGE
+[575.053 ms] END PILOTAGE
+[575.067 ms] START RADIO
+[600.077 ms] END RADIO
+[600.089 ms] START CAMERA
+[624.967 ms] START ORDO_BUS
+[649.979 ms] END ORDO_BUS
+[649.992 ms] START DISTRIB_DONNEES
+[675.004 ms] END DISTRIB_DONNEES
+[675.156 ms] END CAMERA
+^C
+
+ça marche quand c'est à 40 mais quand on met à 60 notre bloque fonctionne 
+
+root@joypinote-xenomai:~/tp4# ./pathfinder 
+started task ORDO_BUS, period 125ms, duration 25ms, use resource 0
+started task DISTRIB_DONNEES, period 125ms, duration 25ms, use resource 1
+started task PILOTAGE, period 250ms, duration 25ms, use resource 1
+started task RADIO, period 250ms, duration 25ms, use resource 0
+started task CAMERA, period 250ms, duration 25ms, use resource 0
+started task MESURES, period 5000ms, duration 50ms, use resource 1
+started task METEO, period 5000ms, duration 60ms, use resource 1
+started main program at 0.000ms
+[0.056 ms] START ORDO_BUS
+[25.072 ms] END ORDO_BUS
+[25.092 ms] START DISTRIB_DONNEES
+[50.105 ms] END DISTRIB_DONNEES
+[50.122 ms] START PILOTAGE
+[75.134 ms] END PILOTAGE
+[75.150 ms] START RADIO
+[100.160 ms] END RADIO
+[100.175 ms] START CAMERA
+[124.975 ms] START ORDO_BUS
+[149.985 ms] END ORDO_BUS
+[149.998 ms] START DISTRIB_DONNEES
+[175.008 ms] END DISTRIB_DONNEES
+[175.237 ms] END CAMERA
+[175.253 ms] START MESURES
+[225.264 ms] END MESURES
+[225.279 ms] START METEO
+[249.977 ms] START ORDO_BUS
+[274.987 ms] END ORDO_BUS
+[275.014 ms] START RADIO
+[300.024 ms] END RADIO
+[300.037 ms] START CAMERA
+[325.046 ms] END CAMERA
+[360.380 ms] END METEO
+[360.391 ms] START DISTRIB_DONNEES
+RESET SYSTEM: DISTRIB_DONNEES NON EXECUTÉE
+[385.416 ms] END DISTRIB_DONNEES
+[385.436 ms] START PILOTAGE
+[410.448 ms] END PILOTAGE
+[410.459 ms] START DISTRIB_DONNEES
+[435.469 ms] END DISTRIB_DONNEES
