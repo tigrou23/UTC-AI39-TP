@@ -48,8 +48,9 @@ void release_resource(void) {
 }
 
 ///////////////////////////////////////////////////////////
-void busy_wait(RTIME time) { 
-
+void busy_wait(RTIME duration_ns) {
+  RTIME start_time = rt_timer_read();
+  while ((rt_timer_read() - start_time) < duration_ns);
 }
 
 ///////////////////////////////////////////////////////////
@@ -94,21 +95,32 @@ int create_and_start_rt_task(struct task_descriptor* desc,RTIME first_release_po
 ///////////////////////////////////////////////////////////
 int main(void) {  
   
-  RTIME first_release_point=rt_timer_read()+15000000;
+  RTIME first_release_point = rt_timer_read() + 15000000;
 
-  if(rt_sem_create(&start_sem,"start_semaphore",0,S_PRIO)!=0) {
+  if (rt_sem_create(&start_sem, "start_semaphore", 0, S_PRIO) != 0) {
     printf("error creating start_semaphore\n");
     return EXIT_FAILURE;
   }
-    
-  if(rt_task_sleep_until(first_release_point)!=0)	{
-    printf("error first release point has already elapsed, increase it by %lldns\n",rt_timer_read()-first_release_point);
-	  return EXIT_FAILURE;
-	}
 
-  rt_printf("started main program at %.3fms\n",ms_time_since_start());
-    
+  // Définir les tâches ici
+  struct task_descriptor ORDO_BUS = {
+    .task_function = rt_task,
+    .period = 40000000,
+    .duration = 5000000,
+    .priority = 20,
+    .use_resource = false
+  };
+
+  create_and_start_rt_task(&ORDO_BUS, first_release_point, "ORDO_BUS");
+
+  if (rt_task_sleep_until(first_release_point) != 0) {
+    printf("error first release point has already elapsed, increase it by %lldns\n", rt_timer_read() - first_release_point);
+    return EXIT_FAILURE;
+  }
+
+  rt_sem_broadcast(&start_sem); // Libère toutes les tâches
+  rt_printf("started main program at %.3fms\n", ms_time_since_start());
   rt_sem_delete(&start_sem);
    
-  return  EXIT_SUCCESS;
+  return EXIT_SUCCESS;
 }
