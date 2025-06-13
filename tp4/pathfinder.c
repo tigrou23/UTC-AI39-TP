@@ -183,49 +183,49 @@ int main(void) {
 
   // Définir les tâches ici
   struct task_descriptor ORDO_BUS = {
-    .task_function = rt_task,
+    .task_function = ordo_bus_task,
     .period = 125000000,
     .duration = 25000000,
     .priority = 7,
     .use_resource = false
   };
   struct task_descriptor DISTRIB_DONNEES = {
-    .task_function = rt_task,
+    .task_function = distrib_donnees_task,
     .period = 125000000,
     .duration = 25000000,
     .priority = 6,
     .use_resource = true
   };
   struct task_descriptor PILOTAGE = {
-    .task_function = rt_task,
+    .task_function = rt_task_default,
     .period = 250000000,
     .duration = 25000000,
     .priority = 5,
     .use_resource = true
   };
   struct task_descriptor RADIO = {
-    .task_function = rt_task,
+    .task_function = rt_task_default,
     .period = 250000000,
     .duration = 25000000,
     .priority = 4,
     .use_resource = false
   };
   struct task_descriptor CAMERA = {
-    .task_function = rt_task,
+    .task_function = rt_task_default,
     .period = 250000000,
     .duration = 25000000,
     .priority = 3,
     .use_resource = false
   }; 
   struct task_descriptor MESURES = {
-    .task_function = rt_task,
+    .task_function = rt_task_default,
     .period = 5000000000,
     .duration = 50000000,
     .priority = 2,
     .use_resource = true
   };
 struct task_descriptor METEO = {
-    .task_function = rt_task,
+    .task_function = rt_task_default,
     .period = 5000000000,
     .duration = 40000000,
     .priority = 1,
