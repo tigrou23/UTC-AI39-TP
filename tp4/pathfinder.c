@@ -176,7 +176,7 @@ int main(void) {
     // Création des sémaphores
     if (rt_sem_create(&start_sem, "start_semaphore", 0, S_PRIO) != 0 ||
         rt_sem_create(&resource_sem, "bus_1553", 1, S_PRIO) != 0 ||
-        rt_sem_create(&distrib_done_sem, "distrib_done_sem", 0, S_PRIO) != 0) {
+        rt_sem_create(&distrib_done_sem, "distrib_done_sem", 1, S_PRIO) != 0) {
         printf("error creating semaphores\n");
         return EXIT_FAILURE;
     }
