@@ -9,15 +9,15 @@
 #define TASK_MODE T_JOINABLE
 #define TASK_STKSZ 0
 
-#define SAFE_METEO
+#define SAFE_METEO            // Active la version "sûre" de METEO (durée plus courte)
 
+// Déclaration des sémaphores
 RT_SEM start_sem;
 RT_SEM resource_sem;
 RT_SEM distrib_done_sem;
 
-
-
-typedef struct task_descriptor{
+// Descripteur de tâche
+typedef struct task_descriptor {
   RT_TASK task;
   void (*task_function)(void*);
   RTIME period;
@@ -26,230 +26,179 @@ typedef struct task_descriptor{
   bool use_resource;
 } task_descriptor;
 
-///////////////////////////////////////////////////////////
+// Renvoie le nom de la tâche courante (utile pour les logs)
 char* rt_task_name(void) {
   static RT_TASK_INFO info;
-  rt_task_inquire(NULL,&info);
-
+  rt_task_inquire(NULL, &info);
   return info.name;
 }
 
-///////////////////////////////////////////////////////////
+// Renvoie le temps écoulé depuis le démarrage du programme en millisecondes
 float ms_time_since_start(void) {
-  static RTIME init_time=0;
-	
-  if(init_time==0) init_time=rt_timer_read();
-
-  return (rt_timer_read()-init_time)/1000000.;
+  static RTIME init_time = 0;
+  if (init_time == 0) init_time = rt_timer_read();
+  return (rt_timer_read() - init_time) / 1000000.0;
 }
 
+// Acquisition du bus (sémaphore pour la ressource critique)
 void acquire_resource(void) {
   rt_sem_p(&resource_sem, TM_INFINITE);
 }
 
+// Libération du bus
 void release_resource(void) {
   rt_sem_v(&resource_sem);
 }
 
+// Simulation d'une exécution active (busy wait) pour une durée donnée
 void busy_wait(RTIME duration_ns) {
-    struct threadobj_stat stat;
-    RT_TASK_INFO info;
-
-    if (rt_task_inquire(NULL, &info) != 0) {
-        rt_printf("Error: cannot retrieve task info\n");
-        return;
-    }
-	
-    RTIME start_xtime = info.stat.xtime;
-    RTIME current_xtime;
-
-    do {
-        rt_task_inquire(NULL, &info);
-        current_xtime = info.stat.xtime;
-    } while ((current_xtime - start_xtime) < duration_ns);
+  struct threadobj_stat stat;
+  RT_TASK_INFO info;
+  if (rt_task_inquire(NULL, &info) != 0) {
+    rt_printf("Error: cannot retrieve task info\n");
+    return;
+  }
+  RTIME start_xtime = info.stat.xtime;
+  RTIME current_xtime;
+  do {
+    rt_task_inquire(NULL, &info);
+    current_xtime = info.stat.xtime;
+  } while ((current_xtime - start_xtime) < duration_ns);
 }
 
-///////////////////////////////////////////////////////////
-// Spécifique à DISTRIB_DONNEES avec signal de complétion
+// Tâche DISTRIB_DONNEES — exécute et signale à ORDO_BUS
 void distrib_donnees_task(void *cookie) {
-    struct task_descriptor* params = (struct task_descriptor*)cookie;
+  struct task_descriptor* params = (struct task_descriptor*)cookie;
+  rt_printf("started task %s, period %ims, duration %ims, use resource %i\n",
+            rt_task_name(), (int)(params->period / 1000000),
+            (int)(params->duration / 1000000), params->use_resource);
+  rt_sem_p(&start_sem, TM_INFINITE);
 
-    rt_printf("started task %s, period %ims, duration %ims, use resource %i\n",
-              rt_task_name(), (int)(params->period / 1000000),
-              (int)(params->duration / 1000000), params->use_resource);
+  while (1) {
+    rt_task_wait_period(NULL);
 
-    rt_sem_p(&start_sem, TM_INFINITE);
+    if (params->use_resource) acquire_resource();
+    float start_time = ms_time_since_start();
+    rt_printf("[%.3f ms] START %s\n", start_time, rt_task_name());
 
-    while (1) {
-        rt_task_wait_period(NULL);
-	    
-        if (params->use_resource) acquire_resource();
-	            float start_time = ms_time_since_start();
+    busy_wait(params->duration);
 
-	            rt_printf("[%.3f ms] START %s\n", start_time, rt_task_name());
+    float end_time = ms_time_since_start();
+    rt_printf("[%.3f ms] END %s\n", end_time, rt_task_name());
+    if (params->use_resource) release_resource();
 
-        busy_wait(params->duration);
-        float end_time = ms_time_since_start();
-
-        rt_printf("[%.3f ms] END %s\n", end_time, rt_task_name());
-
-        if (params->use_resource) release_resource();
-
-
-        rt_sem_v(&distrib_done_sem); // signal de complétion
-    }
+    rt_sem_v(&distrib_done_sem); // Signale que la tâche s'est exécutée
+  }
 }
 
-// Spécifique à ORDO_BUS avec vérification du signal
+// Tâche ORDO_BUS — vérifie si DISTRIB_DONNEES a été exécutée
 void ordo_bus_task(void *cookie) {
-    struct task_descriptor* params = (struct task_descriptor*)cookie;
+  struct task_descriptor* params = (struct task_descriptor*)cookie;
+  rt_printf("started task %s, period %ims, duration %ims, use resource %i\n",
+            rt_task_name(), (int)(params->period / 1000000),
+            (int)(params->duration / 1000000), params->use_resource);
+  rt_sem_p(&start_sem, TM_INFINITE);
 
-    rt_printf("started task %s, period %ims, duration %ims, use resource %i\n",
-              rt_task_name(), (int)(params->period / 1000000),
-              (int)(params->duration / 1000000), params->use_resource);
+  while (1) {
+    rt_task_wait_period(NULL);
 
-    rt_sem_p(&start_sem, TM_INFINITE);
-
-    while (1) {
-        rt_task_wait_period(NULL);
-
-        // attente du sémaphore (doit avoir été donné par DISTRIB_DONNEES)
-        if (rt_sem_p(&distrib_done_sem, TM_NONBLOCK) == -EWOULDBLOCK) {
-            rt_printf("RESET SYSTEM: DISTRIB_DONNEES NON EXECUTÉE\n");
-            exit(EXIT_FAILURE);
-        }
-
-
-        if (params->use_resource) acquire_resource();
-	    
-        float start_time = ms_time_since_start();
-        rt_printf("[%.3f ms] START %s\n", start_time, rt_task_name());
-        busy_wait(params->duration);
-	            float end_time = ms_time_since_start();
-        rt_printf("[%.3f ms] END %s\n", end_time, rt_task_name());
-        if (params->use_resource) release_resource();
-
-
+    // Vérifie que DISTRIB_DONNEES a bien terminé
+    if (rt_sem_p(&distrib_done_sem, TM_NONBLOCK) == -EWOULDBLOCK) {
+      rt_printf("RESET SYSTEM: DISTRIB_DONNEES NON EXECUTÉE\n");
+      exit(EXIT_FAILURE); // Arrêt du programme
     }
+
+    if (params->use_resource) acquire_resource();
+    float start_time = ms_time_since_start();
+    rt_printf("[%.3f ms] START %s\n", start_time, rt_task_name());
+
+    busy_wait(params->duration);
+
+    float end_time = ms_time_since_start();
+    rt_printf("[%.3f ms] END %s\n", end_time, rt_task_name());
+    if (params->use_resource) release_resource();
+  }
 }
 
+// Tâche générique pour les autres tâches
 void rt_task_default(void *cookie) {
-    struct task_descriptor* params = (struct task_descriptor*)cookie;
+  struct task_descriptor* params = (struct task_descriptor*)cookie;
+  rt_printf("started task %s, period %ims, duration %ims, use resource %i\n",
+            rt_task_name(), (int)(params->period / 1000000),
+            (int)(params->duration / 1000000), params->use_resource);
+  rt_sem_p(&start_sem, TM_INFINITE);
 
-    rt_printf("started task %s, period %ims, duration %ims, use resource %i\n",
-              rt_task_name(), (int)(params->period / 1000000),
-              (int)(params->duration / 1000000), params->use_resource);
+  while (1) {
+    rt_task_wait_period(NULL);
+    if (params->use_resource) acquire_resource();
 
-    rt_sem_p(&start_sem, TM_INFINITE);
+    float start_time = ms_time_since_start();
+    rt_printf("[%.3f ms] START %s\n", start_time, rt_task_name());
 
-    while (1) {
-        rt_task_wait_period(NULL);
+    busy_wait(params->duration);
 
+    float end_time = ms_time_since_start();
+    rt_printf("[%.3f ms] END %s\n", end_time, rt_task_name());
 
-
-        if (params->use_resource) acquire_resource();
-	            float start_time = ms_time_since_start();
-        rt_printf("[%.3f ms] START %s\n", start_time, rt_task_name());
-        busy_wait(params->duration);
-	            float end_time = ms_time_since_start();
-        rt_printf("[%.3f ms] END %s\n", end_time, rt_task_name());
-        if (params->use_resource) release_resource();
-
-
-    }
+    if (params->use_resource) release_resource();
+  }
 }
-///////////////////////////////////////////////////////////
 
-int create_and_start_rt_task(struct task_descriptor* desc,RTIME first_release_point,char* name) {
-    int status=rt_task_create(&desc->task,name,TASK_STKSZ,desc->priority,TASK_MODE);
-    if(status!=0) {
-        printf("error creating task %s\n",name);
-        return status;
-    }
-
-    status=rt_task_set_periodic(&desc->task,first_release_point,desc->period);
-    if(status!=0) {
-        printf("error setting period on task %s\n",name);
-        return status;
-    }
-
-    status=rt_task_start(&desc->task,desc->task_function,desc);
-    if(status!=0) {
-        printf("error starting task %s\n",name);
-    }
+// Fonction pour créer et démarrer une tâche
+int create_and_start_rt_task(struct task_descriptor* desc, RTIME first_release_point, char* name) {
+  int status = rt_task_create(&desc->task, name, TASK_STKSZ, desc->priority, TASK_MODE);
+  if (status != 0) {
+    printf("error creating task %s\n", name);
     return status;
+  }
+
+  status = rt_task_set_periodic(&desc->task, first_release_point, desc->period);
+  if (status != 0) {
+    printf("error setting period on task %s\n", name);
+    return status;
+  }
+
+  status = rt_task_start(&desc->task, desc->task_function, desc);
+  if (status != 0) {
+    printf("error starting task %s\n", name);
+  }
+  return status;
 }
 
-///////////////////////////////////////////////////////////
-int main(void) {  
-  
-  RTIME first_release_point = rt_timer_read() + 15000000;
+// Fonction principale
+int main(void) {
+  RTIME first_release_point = rt_timer_read() + 15000000; // Délai avant démarrage
 
-    // Création des sémaphores
-    if (rt_sem_create(&start_sem, "start_semaphore", 0, S_PRIO) != 0 ||
-        rt_sem_create(&resource_sem, "bus_1553", 1, S_PRIO) != 0 ||
-        rt_sem_create(&distrib_done_sem, "distrib_done_sem", 1, S_PRIO) != 0) {
-        printf("error creating semaphores\n");
-        return EXIT_FAILURE;
-    }
+  // Création des sémaphores
+  if (rt_sem_create(&start_sem, "start_semaphore", 0, S_PRIO) != 0 ||
+      rt_sem_create(&resource_sem, "bus_1553", 1, S_PRIO) != 0 ||
+      rt_sem_create(&distrib_done_sem, "distrib_done_sem", 1, S_PRIO) != 0) {
+    printf("error creating semaphores\n");
+    return EXIT_FAILURE;
+  }
 
-  // Définir les tâches ici
-  struct task_descriptor ORDO_BUS = {
-    .task_function = ordo_bus_task,
-    .period = 125000000,
-    .duration = 25000000,
-    .priority = 7,
-    .use_resource = false
-  };
-  struct task_descriptor DISTRIB_DONNEES = {
-    .task_function = distrib_donnees_task,
-    .period = 125000000,
-    .duration = 25000000,
-    .priority = 6,
-    .use_resource = true
-  };
-  struct task_descriptor PILOTAGE = {
-    .task_function = rt_task_default,
-    .period = 250000000,
-    .duration = 25000000,
-    .priority = 5,
-    .use_resource = true
-  };
-  struct task_descriptor RADIO = {
-    .task_function = rt_task_default,
-    .period = 250000000,
-    .duration = 25000000,
-    .priority = 4,
-    .use_resource = false
-  };
-  struct task_descriptor CAMERA = {
-    .task_function = rt_task_default,
-    .period = 250000000,
-    .duration = 25000000,
-    .priority = 3,
-    .use_resource = false
-  }; 
-  struct task_descriptor MESURES = {
-    .task_function = rt_task_default,
-    .period = 5000000000,
-    .duration = 50000000,
-    .priority = 2,
-    .use_resource = true
-  };
-struct task_descriptor METEO = {
+  // Déclaration des tâches
+  struct task_descriptor ORDO_BUS = {.task_function = ordo_bus_task, .period = 125000000, .duration = 25000000, .priority = 7, .use_resource = false};
+  struct task_descriptor DISTRIB_DONNEES = {.task_function = distrib_donnees_task, .period = 125000000, .duration = 25000000, .priority = 6, .use_resource = true};
+  struct task_descriptor PILOTAGE = {.task_function = rt_task_default, .period = 250000000, .duration = 25000000, .priority = 5, .use_resource = true};
+  struct task_descriptor RADIO = {.task_function = rt_task_default, .period = 250000000, .duration = 25000000, .priority = 4, .use_resource = false};
+  struct task_descriptor CAMERA = {.task_function = rt_task_default, .period = 250000000, .duration = 25000000, .priority = 3, .use_resource = false};
+  struct task_descriptor MESURES = {.task_function = rt_task_default, .period = 5000000000, .duration = 50000000, .priority = 2, .use_resource = true};
+  struct task_descriptor METEO = {
     .task_function = rt_task_default,
     .period = 5000000000,
 
-#ifdef SAFE_METEO
-.duration = 40000000, // 40 ms
-#else
-.duration = 60000000, // 60 ms → trop long
-#endif
+  #ifdef SAFE_METEO
+    .duration = 40000000, // Durée sûre : pas de dépassement
+  #else
+    .duration = 60000000, // Durée trop longue → risque d'erreur
+  #endif
 
     .priority = 1,
     .use_resource = true
   };
 
+  // Démarrage des tâches
   create_and_start_rt_task(&ORDO_BUS, first_release_point, "ORDO_BUS");
   create_and_start_rt_task(&DISTRIB_DONNEES, first_release_point, "DISTRIB_DONNEES");
   create_and_start_rt_task(&PILOTAGE, first_release_point, "PILOTAGE");
@@ -258,6 +207,7 @@ struct task_descriptor METEO = {
   create_and_start_rt_task(&MESURES, first_release_point, "MESURES");
   create_and_start_rt_task(&METEO, first_release_point, "METEO");
 
+  // Attente du moment de première libération
   if (rt_task_sleep_until(first_release_point) != 0) {
     printf("error first release point has already elapsed, increase it by %lldns\n", rt_timer_read() - first_release_point);
     return EXIT_FAILURE;
@@ -265,17 +215,15 @@ struct task_descriptor METEO = {
 
   rt_printf("started main program at %.3fms\n", ms_time_since_start());
 
-  rt_sem_broadcast(&start_sem); // Libère toutes les tâches
+  rt_sem_broadcast(&start_sem); // Libère toutes les tâches simultanément
 
+  // Boucle infinie pour maintenir le programme actif
+  while (1) {
+    rt_task_sleep(1e9); // Attente de 1 seconde
+  }
 
-      // Boucle infinie pour maintenir le contexte actif
-    while (1) {
-        rt_task_sleep(1e9); // Attente 1 seconde
-    }
-    
+  // Nettoyage (jamais atteint ici)
   rt_sem_delete(&start_sem);
 
-
-   
   return EXIT_SUCCESS;
 }
