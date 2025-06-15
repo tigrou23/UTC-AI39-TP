@@ -54,6 +54,7 @@ void release_resource(void) {
 void busy_wait(RTIME duration_ns) {
   struct threadobj_stat stat;
   RT_TASK_INFO info;
+  // On utilise xtime pour mesurer une durée d'exécution active sans dormir
   if (rt_task_inquire(NULL, &info) != 0) {
     rt_printf("Error: cannot retrieve task info\n");
     return;
@@ -69,12 +70,15 @@ void busy_wait(RTIME duration_ns) {
 // Tâche DISTRIB_DONNEES — exécute et signale à ORDO_BUS
 void distrib_donnees_task(void *cookie) {
   struct task_descriptor* params = (struct task_descriptor*)cookie;
+  // Affiche les paramètres de la tâche au démarrage pour le debug
   rt_printf("started task %s, period %ims, duration %ims, use resource %i\n",
             rt_task_name(), (int)(params->period / 1000000),
             (int)(params->duration / 1000000), params->use_resource);
+  // Attend le signal de démarrage global avant de commencer l'exécution périodique
   rt_sem_p(&start_sem, TM_INFINITE);
 
   while (1) {
+    // Attend la prochaine activation périodique
     rt_task_wait_period(NULL);
 
     if (params->use_resource) acquire_resource();
@@ -87,6 +91,7 @@ void distrib_donnees_task(void *cookie) {
     rt_printf("[%.3f ms] END %s\n", end_time, rt_task_name());
     if (params->use_resource) release_resource();
 
+    // Signale à ORDO_BUS que cette tâche a été exécutée correctement
     rt_sem_v(&distrib_done_sem); // Signale que la tâche s'est exécutée
   }
 }
@@ -94,18 +99,21 @@ void distrib_donnees_task(void *cookie) {
 // Tâche ORDO_BUS — vérifie si DISTRIB_DONNEES a été exécutée
 void ordo_bus_task(void *cookie) {
   struct task_descriptor* params = (struct task_descriptor*)cookie;
+  // Affiche les paramètres de la tâche au démarrage pour le debug
   rt_printf("started task %s, period %ims, duration %ims, use resource %i\n",
             rt_task_name(), (int)(params->period / 1000000),
             (int)(params->duration / 1000000), params->use_resource);
   rt_sem_p(&start_sem, TM_INFINITE);
 
   while (1) {
+    // Attente du prochain réveil périodique défini par la période de la tâche
     rt_task_wait_period(NULL);
 
-    // Vérifie que DISTRIB_DONNEES a bien terminé
+    // Vérifie si DISTRIB_DONNEES s'est exécutée depuis la dernière période
     if (rt_sem_p(&distrib_done_sem, TM_NONBLOCK) == -EWOULDBLOCK) {
       rt_printf("RESET SYSTEM: DISTRIB_DONNEES NON EXECUTÉE\n");
       exit(EXIT_FAILURE); // Arrêt du programme
+      // Arrêt immédiat du système car DISTRIB_DONNEES n’a pas été exécutée à temps
     }
 
     if (params->use_resource) acquire_resource();
@@ -123,12 +131,15 @@ void ordo_bus_task(void *cookie) {
 // Tâche générique pour les autres tâches
 void rt_task_default(void *cookie) {
   struct task_descriptor* params = (struct task_descriptor*)cookie;
+  // Affiche les paramètres de la tâche au démarrage pour le debug
   rt_printf("started task %s, period %ims, duration %ims, use resource %i\n",
             rt_task_name(), (int)(params->period / 1000000),
             (int)(params->duration / 1000000), params->use_resource);
+  // Synchronisation avec le démarrage global avant l'exécution
   rt_sem_p(&start_sem, TM_INFINITE);
 
   while (1) {
+    // Attente du prochain réveil périodique défini par la période de la tâche
     rt_task_wait_period(NULL);
     if (params->use_resource) acquire_resource();
 
@@ -147,18 +158,21 @@ void rt_task_default(void *cookie) {
 // Fonction pour créer et démarrer une tâche
 int create_and_start_rt_task(struct task_descriptor* desc, RTIME first_release_point, char* name) {
   int status = rt_task_create(&desc->task, name, TASK_STKSZ, desc->priority, TASK_MODE);
+  // Affichage d'une erreur si la création/la configuration/le lancement échoue
   if (status != 0) {
     printf("error creating task %s\n", name);
     return status;
   }
 
   status = rt_task_set_periodic(&desc->task, first_release_point, desc->period);
+  // Affichage d'une erreur si la création/la configuration/le lancement échoue
   if (status != 0) {
     printf("error setting period on task %s\n", name);
     return status;
   }
 
   status = rt_task_start(&desc->task, desc->task_function, desc);
+  // Affichage d'une erreur si la création/la configuration/le lancement échoue
   if (status != 0) {
     printf("error starting task %s\n", name);
   }
@@ -198,7 +212,7 @@ int main(void) {
     .use_resource = true
   };
 
-  // Démarrage des tâches
+  // Création et démarrage de toutes les tâches du système avec leurs paramètres respectifs
   create_and_start_rt_task(&ORDO_BUS, first_release_point, "ORDO_BUS");
   create_and_start_rt_task(&DISTRIB_DONNEES, first_release_point, "DISTRIB_DONNEES");
   create_and_start_rt_task(&PILOTAGE, first_release_point, "PILOTAGE");
