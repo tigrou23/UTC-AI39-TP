@@ -202,11 +202,11 @@ Une fois la structure remplie, notre fonction ne fait que renvoyer le nom de la 
 
 Cette structure `RT_TASK_INFO` permet de stocker les données suivantes :
 
-![img1.png](img/img1.png)
+![img1.png](resources/img/img1.png)
 
 On trouve donc la priorité de la tâche, son nom, ainsi que le PID du processus. Nous trouvons également la structure `threadobj_stat`. Cette structure ressemble beaucoup aux données affichées lors de l’utilisation de la commande `stat` lors du dernier TP. On retrouve les Mode Switches, et Context Switches ou encore le Status :
 
-![img2.png](img/img2.png)
+![img2.png](resources/img/img2.png)
 
 ---
 
@@ -607,7 +607,7 @@ RESET SYSTEM: DISTRIB_DONNEES NON EXECUTÉE
 
 On remarque un problème d’inversion de priorité. En effet, la tâche `ORDO_BUS` est effectuée alors que `DISTRIB_DONNEE est lancé et de priorité plus haute.
 
-![img3.png](img/img3.png)
+![img3.png](resources/img/img3.png)
 
 ### Proposition pour résoudre ce problème 
 
@@ -689,7 +689,7 @@ rt_sem_v(&resource_sem);
 
 Après avoir testé notre programme, nous pouvons dessiner ce chronogramme : 
 
-![img4.png](img/img4.png)
+![img4.png](resources/img/img4.png)
 
 Le problème d’inversion de priorité a été corrigé.
 
@@ -697,7 +697,7 @@ Quand `METEO` devient plus longue (ex. 60ms) et empêche `DISTRIB_DONNEES` d’a
 
 ## Question 12 
 
-[Code Source](./pathfinder.c) : 
+[Code Source](resources/pathfinder.c) : 
 
 ```c
 #include <stdio.h>
