@@ -668,7 +668,7 @@ module_init(rtgpio_init);
 module_exit(rtgpio_exit);
 ```
 
-`main.c` :
+`open_close_gpio.c` :
 
 ```c
 #include "stdlib.h"
