@@ -107,7 +107,7 @@ bonjour tout le monde !
 
 **Modes d’ouverture**: `O_RDONLY`, `O_WRONLY` ou `O_RDWR`.  Le pipe est intrinsèquement bidirectionnel; les deux extrémités voient les messages déposés par l’autre.
 
-### Question 2 Unidirectionnel: RT→ Linux
+### Question 2 Bidirectionnel: RT→ Linux
 
 Nous souhaitons maintenant également écrire dans le main et lire dans une tâche temps-réel. Le pipe est bidirectionnel, c’est à dire que quand le côté non temps réel écrit, il ne lira pas ce qu’il a écrit et inversement.
 
