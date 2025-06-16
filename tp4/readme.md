@@ -1,6 +1,6 @@
 # Compte Rendu TP4 - Analyse Temps Réel sous Xenomai (Pathfinder) (MI11 / AI39 - Printemps 2025)
 
-> [Ce compte rendu a été converti de notre readme (en markdown) en PDF. Nous vous conseillons de visionner notre rapport sur ce lien](https://github.com/tigrou23/UTC-AI39-TP/tree/main/tp4)
+[Sujet du TP 4](./TP4_sujet.pdf)
 
 **Nom :** [Hugo Pereira](https://github.com/tigrou23) & Maher Zizouni
 
@@ -9,8 +9,6 @@
 **TP :** Xenomai - TP4
 
 **Encadrant :** Guillaume Sanahuja
-
-[Sujet du TP 4](./TP4_sujet.pdf)
 
 ---
 
