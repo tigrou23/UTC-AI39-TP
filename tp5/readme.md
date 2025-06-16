@@ -772,8 +772,8 @@ void task_body() {
 	RTIME ton = (RTIME)(RAPPORT_CYCLIQUE / (double)FREQUENCE * 1e9);
 	RTIME toff  = (RTIME)(((1.0 - RAPPORT_CYCLIQUE) / (double)FREQUENCE) * 1e9);
 
-rtprintf("T on = %lld\n", ton); 
-rtprintf("T off = %lld\n", toff); 
+rt_printf("T on = %lld\n", ton); 
+rt_printf("T off = %lld\n", toff); 
 
 
     if(RAPPORT_CYCLIQUE == 1 ) {
