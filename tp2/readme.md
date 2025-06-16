@@ -1,5 +1,21 @@
 # Compte Rendu TP2 - Linux embarqué (MI11 / AI39 - Printemps 2025)
 
+---
+# Retours du professeur (Note : 17.7/20)
+
+Q3.1 : il y a plusieurs types d’événements
+
+Q3.2 : comment savez vous qu’il faut chercher le fichier input.h ? Le point de départ est de trouver ou est la struct input_event
+
+Q3.3 : attention : « La boucle est réactive et ne fait aucune attente bloquante, donc idéal pour systèmes embarqués temps réel. » n’est pas juste. Le read sur le clavier est bien bloquant
+
+Q4.2 : il ne s’agit pas que de la charge (à chaque fois le cpu est à 100%), mais du nombre de tâches en concurrences
+
+Q5.2 : les caractéristiques sont données par evtest (valuers min, max, etc)
+
+> Très bon CR, complet et détaillé
+---
+
 [Sujet du TP 2](./TP2_sujet.pdf)
 
 **Nom :** [Hugo Pereira](https://github.com/tigrou23) & Maher Zizouni

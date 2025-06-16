@@ -10,6 +10,8 @@
 
 **Encadrant :** Guillaume Sanahuja
 
+[Sujet du TP 3](./TP3_sujet.pdf)
+
 ---
 
 ## 🛠️ Exercice 1 : Mise en place de Xenomai avec Yocto
