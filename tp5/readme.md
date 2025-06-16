@@ -375,6 +375,8 @@ Cet exercice montre comment utiliser RTDM pour créer un **driver temps réel** 
 
 ## Exercice 3 — Registres
 
+### 2.3 — Calcule de l’adresse de base des registres GPIO
+
 Nous souhaitons maintenant que nous savons ouvrir un périphérique, le contrôler pour commander des ports GPIO. Nous lisons la documentation BCM2711 ARM Peripherals pour chercher les informations sur les adresses à utiliser et quelles valeurs donner.
 
 ![img1.png](resources/img/img1.png)
@@ -390,5 +392,137 @@ L’adresse est  0x7e2000000 - 0x07C000000 = 2200000 (offset du GPIO par rapport
 
 Cette base est utilisée pour accéder aux registres GPIO dans le driver.
 
+### Question 2.4 : Opérations logiques pour activer un GPIO i en sortie
 
+Chaque GPIO est configuré sur 3 bits dans les registres `GPFSELn`. Pour les GPIO 0 à 9, ils sont tous dans `GPFSEL0`. Voici les étapes logiques pour configurer un GPIO i (0 ≤ i ≤ 9) en sortie :
 
+1. Lire la valeur du registre `GPFSEL0` (offset `0x00`).
+2. Créer un masque `0b111` décalé de `3*i` bits pour cibler les 3 bits du GPIO.
+3. Appliquer un **ET bit à bit avec le complément du masque** pour remettre ces bits à 0.
+4. Appliquer un **OU** avec `0b001` décalé de `3*i` pour activer le mode « output ».
+
+### Question 2.5 : Opérations logiques pour mettre un GPIO i à 0 ou à 1
+
+L'écriture dans un GPIO ne se fait pas directement par modification du registre, mais via des registres dédiés :
+
+* Pour mettre un GPIO i à **1**, écrire `1 << i` dans `GPSET0` (offset `0x1C`).
+* Pour mettre un GPIO i à **0**, écrire `1 << i` dans `GPCLR0` (offset `0x28`).
+
+Pas besoin de lire la valeur au préalable, car ces registres n’affectent que les bits positionnés à 1.
+
+### Question 2.6 : Code du driver RTDM pour GPIO
+
+```c
+#include <linux/module.h>
+#include <rtdm/driver.h> 
+#include "rtdm_gpio.h"            // Définitions spécifiques à notre driver GPIO
+
+#define REGISTRE_BASE 0x0FE200000  // Adresse de base des registres GPIO en mode Low Peripheral (BCM2711)
+
+MODULE_LICENSE("GPL");           // Licence du module (nécessaire pour le chargement dans le noyau)
+
+// Fonction appelée à l'ouverture du périphérique
+int rtgpio_open(struct rtdm_fd *fd, int oflags) {
+    rtdm_printk("rtgpio_open\n"); // Message dans le log temps réel
+    return 0;                   
+}
+
+// Fonction appelée à la fermeture du périphérique
+void rtgpio_close(struct rtdm_fd *fd) {
+    rtdm_printk("rtgpio_close\n"); // Message dans le log temps réel
+}
+
+// Fonction pour configurer un GPIO en sortie
+int rtgpio_direction_output(unsigned char gpio) {
+    rtdm_printk("rtgpio_direction_output %i\n", gpio);
+
+    if (gpio < 10) {
+        // Mapping en mémoire du registre de configuration GPIO (GPFSEL0)
+        unsigned long base = (unsigned long)ioremap(REGISTRE_BASE, 4);
+        int offset = 0x00; // GPFSEL0 correspond aux GPIO 0–9
+        int val = readl((void *)base + offset); // Lecture de la configuration actuelle
+
+        int shift = gpio * 3;                // Chaque GPIO utilise 3 bits pour la configuration
+        int mask = ~(0b111 << shift);        // Masque pour effacer les bits du GPIO ciblé
+        val &= mask;                         // Applique le masque
+        val |= (0b001 << shift);             // Configure le GPIO en "output" (001)
+
+        writel(val, (void *)base + offset);  // Écriture de la nouvelle configuration
+        return 0;
+    } else {
+        // GPIO invalide (hors plage supportée)
+        rtdm_printk("rtgpio_direction_output, invalid gpio number %i\n", gpio);
+        return -1;
+    }
+}
+
+// Fonction pour mettre à 1 ou à 0 la sortie d’un GPIO
+int rtgpio_set_value(unsigned char gpio, bool value) {
+    if (gpio < 10) {
+        // Choix du registre en fonction de la valeur :
+        // GPSET0 pour mettre à 1, GPCLR0 pour mettre à 0
+        int offset = value ? 0x1C : 0x28;
+        int mask = 1 << gpio; // Masque pour cibler le bon GPIO
+        unsigned long base = (unsigned long)ioremap(REGISTRE_BASE, 4);
+        writel(mask, (void *)base + offset); // Écriture dans le registre choisi
+        return 0;
+    } else {
+        // GPIO invalide
+        rtdm_printk("rtgpio_set_value, invalid gpio number %i\n", gpio);
+        return -1;
+    }
+}
+
+// Fonction d’entrée/sortie de contrôle (ioctl) : permet d’interagir avec le driver via des commandes
+int rtgpio_ioctl(struct rtdm_fd *fd, unsigned int request, void *arg) {
+    unsigned char pin = (long)arg;
+
+    switch (request) {
+    case RTGPIO_SET_DIRECTION_OUTPUT:
+        return rtgpio_direction_output(pin); // Configure le GPIO en sortie
+    case RTGPIO_SET:
+        return rtgpio_set_value(pin, true);  // Met le GPIO à l’état haut (1)
+    case RTGPIO_CLEAR:
+        return rtgpio_set_value(pin, false); // Met le GPIO à l’état bas (0)
+    default:
+        rtdm_printk("rtgpio_ioctl, unsupported request %i\n", request);
+        return -1; // Commande non supportée
+    }
+}
+
+// Définition du driver RTDM : nom, classe, flags et opérations supportées
+static struct rtdm_driver rtgpio_driver = {
+    .profile_info = RTDM_PROFILE_INFO(rtgpio, RTDM_CLASS_EXPERIMENTAL, 1, 1),
+    .device_flags = RTDM_NAMED_DEVICE | RTDM_EXCLUSIVE, // Nom explicite + accès exclusif
+    .device_count = 1,
+    .ops = {
+        .open = rtgpio_open,
+        .close = rtgpio_close,
+        .ioctl_rt = rtgpio_ioctl, // Appels de commandes
+    },
+};
+
+// Enregistrement du périphérique dans le système RTDM
+static struct rtdm_device rtgpio_device = {
+    .driver = &rtgpio_driver,
+    .label = "rtgpio", // Nom sous /dev/rtdm/rtgpio
+};
+
+// Fonction appelée à l’insertion du module (init)
+int __init rtgpio_init(void) {
+    rtdm_printk("rtgpio_init\n");
+    return rtdm_dev_register(&rtgpio_device); // Enregistrement du périphérique
+}
+
+// Fonction appelée à la suppression du module (exit)
+void rtgpio_exit(void) {
+    rtdm_printk("rtgpio_exit\n");
+    rtdm_dev_unregister(&rtgpio_device); // Désenregistrement propre
+}
+
+// Macros de gestion de cycle de vie du module
+module_init(rtgpio_init);
+module_exit(rtgpio_exit);
+```
+
+> Ce code permet de piloter les GPIOs 0 à 9 en accès bas niveau via RTDM, en respectant les contraintes de Xenomai et les bonnes pratiques du noyau Linux.
