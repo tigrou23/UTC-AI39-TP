@@ -729,6 +729,16 @@ int main() {
 
 ### 2.8 — Améliorations pour faire clignoter les leds
 
+Nous avons programmé un clignotement à fréquence et rapport cyclique personnalisables, ce qui permet de simuler n’importe quel comportement.
+
+On a ajouté `FREQUENCE` qui représente la période totale du clignotement en nanosecondes (utilisé dans `rt_task_sleep`) et `RAPPORT_CYCLIQUE` est un float entre 0 et 1, indiquant le pourcentage de temps où la LED reste allumée pendant une période.
+
+La LED est donc :
+•	Allumée pendant `FREQUENCE * RAPPORT_CYCLIQUE` ns
+•	Éteinte pendant `FREQUENCE * (1 - RAPPORT_CYCLIQUE)` ns
+
+Cela est géré dans une boucle infinie conditionnelle à `RAPPORT_CYCLIQUE`, avec des appels `ioctl` à `RTGPIO_SET` et `RTGPIO_CLEAR`, suivis de `rt_task_sleep(...)`.
+
 ```c
 #include "stdlib.h"
 #include "stdio.h"
@@ -797,9 +807,3 @@ int main() {
     return EXIT_SUCCESS;
 }
 ```
-
-Le code met en place du PWM (Pulse-Width Modulation) en simulant une sortie analogique avec une sortie numérique. Elle permet de rendre une sortie moyenne contrôlée en variant rapidement la valeur entre 0 et 1.
-
-Pour notre cas, nous utilisons un rapport cyclique et une fréquence pour contrôler cette sortie. La moyenne se manifestera sous forme d’intensité lumineuse en raison d’une fréquence rapide mais d’une vision humaine ne permettant pas de distinguer chaque état de la led.
-
-En raison de l’impossibilité de directement utiliser la cible, on ne peut pas déterminer le minimum.
