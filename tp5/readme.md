@@ -349,7 +349,7 @@ int main() {
 #### 🧪 Compilation avec le Makefile RTDM (fourni sur Moodle)
 
 ```bash
-make -f Makefile.rtdm
+make
 ```
 
 #### 🚀 Exécution sur la cible
