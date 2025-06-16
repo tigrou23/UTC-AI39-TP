@@ -814,3 +814,5 @@ int main() {
     return EXIT_SUCCESS;
 }
 ```
+
+On ne voit rien car ça va trop vite. Il faut baisser la fréquence. 
