@@ -370,3 +370,25 @@ Et dans les logs du noyau :
 ✅ La tâche temps réel a bien interagi avec le module noyau via l’interface RTDM.
 
 Cet exercice montre comment utiliser RTDM pour créer un **driver temps réel** simple pilotant des GPIOs, et comment interagir avec ce module via un **programme utilisateur Xenomai**. La bonne communication entre espace utilisateur et noyau est confirmée par l’apparition du périphérique `/dev/rtdm/rtgpio`, la capture des logs noyau avec `dmesg`, et l’exécution réussie de la tâche temps réel.
+
+---
+
+## Exercice 3 — Registres
+
+Nous souhaitons maintenant que nous savons ouvrir un périphérique, le contrôler pour commander des ports GPIO. Nous lisons la documentation BCM2711 ARM Peripherals pour chercher les informations sur les adresses à utiliser et quelles valeurs donner.
+
+![img1.png](resources/img/img1.png)
+
+À partir de la documentation BCM2711 ARM Peripherals nous utilisons l’adresse Low Peripheral.
+
+**En mode Low Peripheral :**
+
+```
+L’adresse est  0x7e2000000 - 0x07C000000 = 2200000 (offset du GPIO par rapport à main peripheral)
+0x0FC000000 + 0x2200000 = registre base GPIO (0x0FE200000)
+```
+
+Cette base est utilisée pour accéder aux registres GPIO dans le driver.
+
+
+
