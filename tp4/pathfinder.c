@@ -5,16 +5,20 @@
 #include <alchemy/task.h>
 #include <alchemy/timer.h>
 #include <alchemy/sem.h>
+#include <alchemy/mutex.h>
 
 #define TASK_MODE T_JOINABLE
 #define TASK_STKSZ 0
 
-#define SAFE_METEO            // Active la version "sûre" de METEO (durée plus courte)
-
 // Déclaration des sémaphores
 RT_SEM start_sem;
-RT_SEM resource_sem;
 RT_SEM distrib_done_sem;
+
+#ifdef USE_MUTEX
+RT_MUTEX resource_mutex;
+#else
+RT_SEM resource_sem;
+#endif
 
 // Descripteur de tâche
 typedef struct task_descriptor {
@@ -40,14 +44,22 @@ float ms_time_since_start(void) {
   return (rt_timer_read() - init_time) / 1000000.0;
 }
 
-// Acquisition du bus (sémaphore pour la ressource critique)
+// Acquisition du bus (mutex pour la ressource critique)
 void acquire_resource(void) {
+#ifdef USE_MUTEX
+  rt_mutex_acquire(&resource_mutex, TM_INFINITE);
+#else
   rt_sem_p(&resource_sem, TM_INFINITE);
+#endif
 }
 
 // Libération du bus
 void release_resource(void) {
+#ifdef USE_MUTEX
+  rt_mutex_release(&resource_mutex);
+#else
   rt_sem_v(&resource_sem);
+#endif
 }
 
 // Simulation d'une exécution active (busy wait) pour une durée donnée
@@ -185,7 +197,7 @@ int main(void) {
 
   // Création des sémaphores
   if (rt_sem_create(&start_sem, "start_semaphore", 0, S_PRIO) != 0 ||
-      rt_sem_create(&resource_sem, "bus_1553", 1, S_PRIO) != 0 ||
+      rt_mutex_create(&resource_mutex, "bus_1553") != 0 ||
       rt_sem_create(&distrib_done_sem, "distrib_done_sem", 1, S_PRIO) != 0) {
     printf("error creating semaphores\n");
     return EXIT_FAILURE;
@@ -201,13 +213,7 @@ int main(void) {
   struct task_descriptor METEO = {
     .task_function = rt_task_default,
     .period = 5000000000,
-
-  #ifdef SAFE_METEO
     .duration = 40000000, // Durée sûre : pas de dépassement
-  #else
-    .duration = 60000000, // Durée trop longue → risque d'erreur
-  #endif
-
     .priority = 1,
     .use_resource = true
   };
@@ -238,6 +244,7 @@ int main(void) {
 
   // Nettoyage (jamais atteint ici)
   rt_sem_delete(&start_sem);
+  rt_mutex_delete(&resource_mutex);
 
   return EXIT_SUCCESS;
 }
