@@ -754,7 +754,7 @@ Cela est géré dans une boucle infinie conditionnelle à `RAPPORT_CYCLIQUE`, av
 #define TASK_MODE 0
 #define TASK_STKSZ 0
 
-#define FREQUENCE 2000
+#define FREQUENCE 1000
 #define RAPPORT_CYCLIQUE 0.5
 
 // ouverture puis fermeture du périphérique
