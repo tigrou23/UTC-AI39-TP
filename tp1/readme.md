@@ -1,5 +1,31 @@
 # Compte Rendu TP1 - Linux embarqué (MI11 / AI39 - Printemps 2025)
 
+---
+# Retours du professeur (Note : 14.5/20)
+
+Q1.3 : comparez également la taille des noyaux
+
+Q2.1 : vous oubliez le firmware start4;elf
+
+Q2.4 : quels sont les logiciels lancés par le init ?
+
+Q2.6 : le port série est /dev/ttyS0
+
+Q2.7 : donnez les commandes gérées par busybox
+
+Q3.1 : et où se trouve le noyau ?
+
+Q3.2 : la question porte sur paquets relatifs à nano (dbg, dev, doc, src, traductions)
+
+Q3.3 : et quel est le problème de gérer ca manuellement ?
+
+Q3.4 : un serveur http est déjà en place dans la VM, pas besoin dans lancer un
+
+Q4.x : suivez les questions pour y répondre ; vous ne répondez pas à tout
+
+> bon CR, veillez cependant à suivre les questions et à étoffer quelques réponses
+---
+
 [Sujet du TP 1](./TP1_sujet.pdf)
 
 **Nom :** [Hugo Pereira](https://github.com/tigrou23) & Maher Zizouni
