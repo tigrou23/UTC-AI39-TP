@@ -737,7 +737,7 @@ La LED est donc :
 •	Allumée pendant `FREQUENCE * RAPPORT_CYCLIQUE` ns
 •	Éteinte pendant `FREQUENCE * (1 - RAPPORT_CYCLIQUE)` ns
 
-Cela est géré dans une boucle infinie conditionnelle à `RAPPORT_CYCLIQUE`, avec des appels `ioctl` à `RTGPIO_SET` et `RTGPIO_CLEAR`, suivis de `rt_task_sleep(...)`.
+Cela est géré dans une boucle infinie conditionnelle à `RAPPORT_CYCLIQUE`, avec des appels `ioctl` à `RTGPIO_SET` et `RTGPIO_CLEAR`, suivis de `rt_task_sleep(...).
 
 ```c
 #include "stdlib.h"
@@ -755,7 +755,7 @@ Cela est géré dans une boucle infinie conditionnelle à `RAPPORT_CYCLIQUE`, av
 #define TASK_STKSZ 0
 
 #define FREQUENCE 2000
-#define RAPPORT_CYCLIQUE 0.60
+#define RAPPORT_CYCLIQUE 0.5
 
 // ouverture puis fermeture du périphérique
 void task_body() {
