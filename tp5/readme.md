@@ -75,7 +75,7 @@ int main() {
      ssize_t size = read(fptr, data, sizeof(char)*30);
     
      if(size > 0) {
-       printf("%s\n",data);
+       printf("%s",data);
      }
     
    }
