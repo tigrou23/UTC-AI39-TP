@@ -778,11 +778,11 @@ void task_body() {
     else {
         while(1) {
             ioctl(fd, RTGPIO_SET, 5);
-            rt_task_sleep(RTIME(RAPPORT_CYCLIQUE/FREQUENCE * 1e9));
+            rt_task_sleep(RAPPORT_CYCLIQUE/FREQUENCE * 1e9);
 
 
             ioctl(fd, RTGPIO_CLEAR, 5);
-            rt_task_sleep(RTIME(1e9 * ((1/FREQUENCE) - (RAPPORT_CYCLIQUE/FREQUENCE))));
+            rt_task_sleep(1e9 * ((1/FREQUENCE) - (RAPPORT_CYCLIQUE/FREQUENCE)));
         }
     }
 
