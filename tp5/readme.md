@@ -414,8 +414,8 @@ Pas besoin de lire la valeur au préalable, car ces registres n’affectent que 
 
 ```c
 #include <linux/module.h>
-#include <rtdm/driver.h> 
-#include "rtdm_gpio.h"            // Définitions spécifiques à notre driver GPIO
+#include <rtdm/driver.h>
+#include "rtdm_gpio.h"
 
 #define REGISTRE_BASE 0x0FE200000  // Adresse de base des registres GPIO en mode Low Peripheral (BCM2711)
 
