@@ -227,13 +227,13 @@ HELLO (from main) (in RT)
 
 ---
 
-## 🔌 Exercice 2 — GPIOs avec RTDM (Xenomai)
+## Exercice 2 — GPIOs avec RTDM (Xenomai)
 
 Dans cet exercice, nous implémentons un **driver RTDM** pour manipuler les **GPIOs** (par exemple pour piloter des LED) depuis un **module noyau temps réel**, ainsi qu’une application utilisateur qui communique avec ce module via un **périphérique `/dev/rtdm/rtgpio`**. Le tout est compilé en **dehors de Yocto** avec la chaîne de compilation croisée.
 
-### 🛠️ 2.1 — Préparation, compilation et test du module noyau
+### 2.1 — Préparation, compilation et test du module noyau
 
-#### ✅ Étapes de préparation (sur la machine hôte)
+#### Étapes de préparation (sur la machine hôte)
 
 ```bash
 cd /opt/mi11/linux-raspberrypi
@@ -242,9 +242,7 @@ patch -p1 < /opt/mi11/meta-joypinote/recipes-kernel/linux/files/pre-rpi4-4.19.86
 cd /opt/mi11/
 wget https://ftp.denx.de/pub/xenomai/xenomai/stable/xenomai-3.1.tar.bz2
 tar -xf xenomai-3.1.tar.bz2
-./xenomai-3.1/scripts/prepare-kernel.sh --arch=arm \
-    --linux=/opt/mi11/linux-raspberrypi/ \
-    --ipipe=/opt/mi11/meta-joypinote/recipes-kernel/linux/files/ipipe-core-4.19.82-arm-6-mod4.49.86.patch.ipipe
+./xenomai-3.1/scripts/prepare-kernel.sh --arch=arm --linux=/opt/mi11/linux-raspberrypi/ --ipipe=/opt/mi11/meta-joypinote/recipes-kernel/linux/files/ipipe-core-4.19.82-arm-6-mod-4.49.86.patch.ipipe
 
 cd /opt/mi11/linux-raspberrypi
 source /opt/poky/3.1.23/cortexa7thf-neon-vfpv4/environment-setup-cortexa7t2hf-neon-vfpv4-poky-linux-gnueabi
@@ -253,16 +251,22 @@ make joypinote-xenomai_defconfig
 make modules -j6
 ```
 
-#### 🧩 Compilation du module
+#### Compilation du module
+
+On importe l'archive rtdm_gpio.tar.bz2 contenant les fichiers nécessaires au module RTDM. Ensuite on les compile :
 
 ```bash
 cd rtdm_gpio
 make
 ```
 
-Le module compilé est : `rtdm_gpio.ko`
+Le module compilé est : `rtdm_gpio.ko`. On envoie ça à notre Joypinote via scp :
 
-#### 📦 Chargement / déchargement sur la cible
+```
+scp rtdm_gpio.ko root@192.168.0.27:/home/root/tp5/
+```
+
+#### Chargement / déchargement sur la cible
 
 ```bash
 root@joypinote:~# insmod rtdm_gpio.ko
@@ -270,7 +274,7 @@ root@joypinote:~# rmmod rtdm_gpio
 root@joypinote:~# insmod rtdm_gpio.ko
 ```
 
-#### 📄 Logs observés dans `dmesg`
+#### Logs observés dans `dmesg`
 
 ```
 [  203.654321] rtgpio_init
@@ -280,7 +284,7 @@ root@joypinote:~# insmod rtdm_gpio.ko
 
 ✅ Le module est chargé et déchargé sans erreur. Le message `rtgpio_init` confirme que l’initialisation est bien faite à chaque insertion.
 
-#### 📁 Création du périphérique RTDM
+#### Création du périphérique RTDM
 
 Le périphérique apparaîtra dans :
 
@@ -288,7 +292,7 @@ Le périphérique apparaîtra dans :
 /dev/rtdm/rtgpio
 ```
 
-➡️ Ce fichier représente l’interface entre le noyau temps réel et les applications utilisateur.
+Ce fichier représente l’interface entre le noyau temps réel et les applications utilisateur.
 
 ---
 
@@ -364,6 +368,5 @@ Et dans les logs du noyau :
 ```
 
 ✅ La tâche temps réel a bien interagi avec le module noyau via l’interface RTDM.
-
 
 Cet exercice montre comment utiliser RTDM pour créer un **driver temps réel** simple pilotant des GPIOs, et comment interagir avec ce module via un **programme utilisateur Xenomai**. La bonne communication entre espace utilisateur et noyau est confirmée par l’apparition du périphérique `/dev/rtdm/rtgpio`, la capture des logs noyau avec `dmesg`, et l’exécution réussie de la tâche temps réel.
