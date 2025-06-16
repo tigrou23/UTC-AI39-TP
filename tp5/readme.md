@@ -733,9 +733,11 @@ Nous avons programmé un clignotement à fréquence et rapport cyclique personna
 
 On a ajouté `FREQUENCE` qui représente la période totale du clignotement en nanosecondes (utilisé dans `rt_task_sleep`) et `RAPPORT_CYCLIQUE` est un float entre 0 et 1, indiquant le pourcentage de temps où la LED reste allumée pendant une période.
 
+On cherche Ton et Toff et R = Ton/T donc Ton = R/F en Hz^-1 donc en seconde. `rt_task_sleep` attend en ns donc on multiplie par 10⁹. Pour Toff on sait que Toff = T-Ton donc Toff = (1/F)*10⁹ - Ton
+
 La LED est donc :
-•	Allumée pendant `FREQUENCE * RAPPORT_CYCLIQUE` ns
-•	Éteinte pendant `FREQUENCE * (1 - RAPPORT_CYCLIQUE)` ns
+•	Allumée pendant `R/F * 10⁹` ns
+•	Éteinte pendant `10⁹*[(1/F) - (R/F)]` ns
 
 Cela est géré dans une boucle infinie conditionnelle à `RAPPORT_CYCLIQUE`, avec des appels `ioctl` à `RTGPIO_SET` et `RTGPIO_CLEAR`, suivis de `rt_task_sleep(...).
 
@@ -776,14 +778,13 @@ void task_body() {
     else {
         while(1) {
             ioctl(fd, RTGPIO_SET, 5);
-            rt_task_sleep(FREQUENCE * RAPPORT_CYCLIQUE );
+            rt_task_sleep(RAPPORT_CYCLIQUE/FREQUENCE * 1e9);
 
 
             ioctl(fd, RTGPIO_CLEAR, 5);
-            rt_task_sleep(FREQUENCE * (1-RAPPORT_CYCLIQUE ));
+            rt_task_sleep(1e9 * ((1/FREQUENCE) - (RAPPORT_CYCLIQUE/FREQUENCE)));
         }
     }
-
 
     close(fd);
 }
