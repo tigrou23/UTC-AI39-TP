@@ -526,3 +526,280 @@ module_exit(rtgpio_exit);
 ```
 
 > Ce code permet de piloter les GPIOs 0 à 9 en accès bas niveau via RTDM, en respectant les contraintes de Xenomai et les bonnes pratiques du noyau Linux.
+
+### 2.7 — Programme pour contrôler les GPIOs
+
+`rtdm_gpio.c` 
+
+```c
+#include <linux/module.h>
+#include <rtdm/driver.h>
+#include "rtdm_gpio.h"
+
+#define REGISTRE_BASE 0xFC000000 + 0x2200000
+
+int OFFSET = 0;
+
+MODULE_LICENSE("GPL");
+
+//fonction appelée lors de l'ouverture du périphérique, on ne fait rien ici
+int rtgpio_open(struct rtdm_fd *fd, int oflags) {
+    rtdm_printk("rtgpio_open\n");
+    return 0;
+}
+
+//fonction appelée lors de la fermeture du périphérique, on ne fait rien ici
+void rtgpio_close(struct rtdm_fd *fd) {
+    rtdm_printk("rtgpio_close\n");
+}
+
+//fonction configurant un GPIO comme output, à compléter
+int rtgpio_direction_output(unsigned char gpio) {
+    rtdm_printk("rtgpio_direction_output %i\n",gpio);
+    if(gpio<10) {
+     OFFSET = 0x00;
+     unsigned long base = (unsigned long)ioremap(REGISTRE_BASE, 4);
+     int val=readl((void *)base + OFFSET);
+     int mask = 7; //111
+     mask << 3*gpio;
+     mask = ~mask;
+     val = val & mask; // AND
+     val = val | (1 << 3*gpio); // OU
+             
+     writel(val,(void *)base + OFFSET);
+     return 0;
+    } else {
+     rtdm_printk("rtgpio_direction_output, invalid gpio number %i\n",gpio);
+     return -1;
+    }
+}
+
+//fonction fixant la valeur d'un GPIO, à compléter
+int rtgpio_set_value(unsigned char gpio,bool value) {
+    if(gpio<10) {
+     int mask = 1 << gpio;
+     if (value == true) {
+         // on fait sur SET0
+         OFFSET = 0x1c;
+
+         unsigned long base=(unsigned long)ioremap(REGISTRE_BASE, 4);
+         writel(mask,(void *)base + OFFSET);
+     }
+     else {
+         // on fait sur CLR0
+         OFFSET = 0x28;
+
+         unsigned long base=(unsigned long)ioremap(REGISTRE_BASE, 4);
+         writel(mask,(void *)base + OFFSET);
+     }
+        return 0;
+    } else {
+     rtdm_printk("rtgpio1_set_value, invalid gpio number %i\n",gpio);
+     return -1;
+    }
+}
+
+//ioctl pour intéragir avec le programme en mode utilisateur
+int rtgpio_ioctl(struct rtdm_fd *fd,unsigned int request, void *arg) {
+    unsigned char pin = (long)arg;
+
+    switch (request) {
+    case RTGPIO_SET_DIRECTION_OUTPUT:
+     return rtgpio_direction_output(pin);
+     break;
+    case RTGPIO_SET:
+     return rtgpio_set_value(pin,true);
+     break;
+    case RTGPIO_CLEAR:
+     return rtgpio_set_value(pin,false);
+     break;
+    default:
+     rtdm_printk("rtgpio_ioctl, unsupported request %i\n",request);
+    }
+
+    return -1;
+}
+
+//structure du périphérique RTDM
+//elle permet de nommer le périphérique, et d'associer les fonctions rtgpio_open, rtgpio_close, rtgpio_ioctl aux appels RTDM coté user space
+static struct rtdm_driver rtgpio_driver = {
+    .profile_info        =    RTDM_PROFILE_INFO(rtgpio, //name
+                           RTDM_CLASS_EXPERIMENTAL, //major
+                           1, //minor
+                           1), //version
+    .device_flags        =    RTDM_NAMED_DEVICE|RTDM_EXCLUSIVE,
+    .device_count        =    1,
+    .ops = {
+     .open       =    rtgpio_open,
+     .close      =    rtgpio_close,
+     .ioctl_rt    =    rtgpio_ioctl,
+    },
+};
+
+static struct rtdm_device rtgpio_device = {
+    .driver = &rtgpio_driver,
+    .label = "rtgpio",
+};
+
+//fonction appelée lors du chargement du module (insmod)
+int __init rtgpio_init(void) {
+    int err;
+   
+    rtdm_printk("rtgpio_init\n");
+
+    //enregistrement du driver
+    err = rtdm_dev_register(&rtgpio_device);
+    if (err)
+     return err;
+
+
+    return 0;
+}
+
+//fonction appelée lors du déchargement du module (rmmod)
+void rtgpio_exit(void) {
+    rtdm_printk("rtgpio_exit\n");
+   
+    //désenregistrement du driver
+    rtdm_dev_unregister(&rtgpio_device);
+}
+
+module_init(rtgpio_init);
+module_exit(rtgpio_exit);
+```
+
+`main.c` :
+
+```c
+#include "stdlib.h"
+#include "stdio.h"
+#include <time.h>
+#include <alchemy/task.h>
+#include "rtdm/rtdm.h"
+#include "rtdm_gpio.h"
+
+#include <fcntl.h>
+#include <unistd.h>
+
+#define TASK_PRIO 99
+#define TASK_MODE 0
+#define TASK_STKSZ 0
+
+// ouverture puis fermeture du périphérique
+void task_body() {
+    int fd = open("/dev/rtdm/rtgpio", O_RDONLY);
+    if (fd == -1) {
+        printf("error opening file\n");
+        return;
+    }
+
+    ioctl(fd, RTGPIO_SET_DIRECTION_OUTPUT, 5);
+
+    while(1) {
+        ioctl(fd, RTGPIO_SET, 5);
+        rt_task_sleep(1000000000);
+
+
+        ioctl(fd, RTGPIO_CLEAR, 5);
+        rt_task_sleep(1000000000);
+    }
+
+    close(fd);
+}
+
+int main() {
+    int err = 0;
+    RT_TASK task_desc;
+
+    err=rt_task_create(&task_desc,"task",TASK_STKSZ,TASK_PRIO,TASK_MODE);
+    if(err!=0) {
+         printf("error rt_task_create\n");
+     return EXIT_FAILURE;
+    }
+
+    rt_task_start(&task_desc,&task_body,NULL);
+
+    while(1) {}
+
+    rt_task_delete(&task_desc);
+     
+    return EXIT_SUCCESS;
+}
+```
+
+### 2.8 — Améliorations pour faire clignoter les leds
+
+```c
+#include "stdlib.h"
+#include "stdio.h"
+#include <time.h>
+#include <alchemy/task.h>
+#include "rtdm/rtdm.h"
+#include "rtdm_gpio.h"
+
+#include <fcntl.h>
+#include <unistd.h>
+
+#define TASK_PRIO 99
+#define TASK_MODE 0
+#define TASK_STKSZ 0
+
+#define FREQUENCE 2000
+#define RAPPORT_CYCLIQUE 0.60
+
+// ouverture puis fermeture du périphérique
+void task_body() {
+    int fd = open("/dev/rtdm/rtgpio", O_RDONLY);
+    if (fd == -1) {
+        printf("error opening file\n");
+        return;
+    }
+
+    ioctl(fd, RTGPIO_SET_DIRECTION_OUTPUT, 5);
+
+    if(RAPPORT_CYCLIQUE == 1 ) {
+	ioctl(fd, RTGPIO_SET, 5);
+    }
+    else if (RAPPORT_CYCLIQUE == 0) {
+	ioctl(fd, RTGPIO_CLEAR, 5);
+    }
+    else {
+        while(1) {
+            ioctl(fd, RTGPIO_SET, 5);
+            rt_task_sleep(FREQUENCE * RAPPORT_CYCLIQUE );
+
+
+            ioctl(fd, RTGPIO_CLEAR, 5);
+            rt_task_sleep(FREQUENCE * (1-RAPPORT_CYCLIQUE ));
+        }
+    }
+
+
+    close(fd);
+}
+
+int main() {
+    int err = 0;
+    RT_TASK task_desc;
+
+    err=rt_task_create(&task_desc,"task",TASK_STKSZ,TASK_PRIO,TASK_MODE);
+    if(err!=0) {
+         printf("error rt_task_create\n");
+     return EXIT_FAILURE;
+    }
+
+    rt_task_start(&task_desc,&task_body,NULL);
+
+    while(1) {}
+
+    rt_task_delete(&task_desc);
+     
+    return EXIT_SUCCESS;
+}
+```
+
+Le code met en place du PWM (Pulse-Width Modulation) en simulant une sortie analogique avec une sortie numérique. Elle permet de rendre une sortie moyenne contrôlée en variant rapidement la valeur entre 0 et 1.
+
+Pour notre cas, nous utilisons un rapport cyclique et une fréquence pour contrôler cette sortie. La moyenne se manifestera sous forme d’intensité lumineuse en raison d’une fréquence rapide mais d’une vision humaine ne permettant pas de distinguer chaque état de la led.
+
+En raison de l’impossibilité de directement utiliser la cible, on ne peut pas déterminer le minimum.
