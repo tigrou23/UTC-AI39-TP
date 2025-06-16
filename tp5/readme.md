@@ -536,7 +536,7 @@ module_exit(rtgpio_exit);
 #include <rtdm/driver.h>
 #include "rtdm_gpio.h"
 
-#define REGISTRE_BASE 0xFC000000 + 0x2200000
+#define REGISTRE_BASE 0x0FE200000  // Adresse de base des registres GPIO en mode Low Peripheral (BCM2711)
 
 int OFFSET = 0;
 
