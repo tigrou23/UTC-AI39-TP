@@ -820,3 +820,279 @@ int main() {
 La LED clignote en “actif bas”, donc un clignotement trop rapide rend l’effet invisible à l’œil nu. Il est recommandé de ne pas dépasser 5 Hz si on souhaite observer distinctement les états de la LED.
 
 Ainsi, une fréquence de 1 Hz à 2 Hz avec un rapport cyclique de 0.5 permet un clignotement bien visible (1 seconde allumée, 1 seconde éteinte).
+
+## 2.9 — Utilisation d’un pipe Xenomai pour configurer une LED dynamiquement
+
+> Tout ce qui suit n'a pas pu être testé sur la Joypinote. Nous supposons que le code fonctionne, mais il n'a pas été exécuté.
+
+Dans cette dernière partie, nous faisons évoluer notre programme pour permettre à l’utilisateur de modifier dynamiquement les paramètres de clignotement (fréquence, rapport cyclique et numéro de GPIO) via un pipe Xenomai. Ce mécanisme de communication inter-processus temps réel permet d’envoyer des données depuis le thread principal vers une tâche Xenomai sans violer les contraintes temps réel.
+
+Le programme est désormais composé de deux parties :
+- **Tâche Xenomai (led_task)** : boucle infinie qui attend une configuration (GPIO, fréquence, rapport cyclique) via un pipe RT et applique les valeurs reçues à la LED.
+- **Thread utilisateur (main)** : lit en boucle les entrées de l’utilisateur (scanf), puis envoie une structure contenant les nouveaux paramètres via le pipe.
+
+Ce découpage permet une modification à chaud, sans redémarrer la tâche.
+
+On doit donc créer une structure pour contenir les paramètres de clignotement :
+
+```c
+typedef struct {
+    int gpio;
+    double frequence;
+    double rapport;
+} led_config;
+```
+
+Si on reprend le code précédent, on peut l’adapter pour utiliser un pipe Xenomai :
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <alchemy/task.h>
+#include <alchemy/pipe.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include "rtdm_gpio.h"
+
+#define PIPE_NAME "led_pipe"
+#define PIPE_ID 42
+#define TASK_PRIO 99
+#define TASK_STKSZ 0
+#define TASK_MODE 0
+
+typedef struct {
+    int gpio;
+    double frequence;
+    double rapport;
+} led_config;
+
+RT_PIPE pipe_desc;
+
+void led_task(void *arg) {
+    int fd = open("/dev/rtdm/rtgpio", O_RDONLY);
+    if (fd == -1) {
+        rt_printf("Erreur ouverture périphérique RTDM\n");
+        return;
+    }
+
+    led_config config;
+
+    while (1) {
+        // Attente d’un message depuis le pipe
+        ssize_t n = rt_pipe_read(&pipe_desc, &config, sizeof(config), TM_INFINITE);
+        if (n != sizeof(config)) continue;
+
+        // Affiche la config reçue
+        rt_printf("GPIO %d | Freq %.2f Hz | Rapport %.2f\n", config.gpio, config.frequence, config.rapport);
+
+        // Configure GPIO en sortie
+        ioctl(fd, RTGPIO_SET_DIRECTION_OUTPUT, config.gpio);
+
+        // Si R=1 → LED toujours éteinte
+        if (config.rapport >= 1.0) {
+            ioctl(fd, RTGPIO_SET, config.gpio);
+            continue;
+        }
+
+        // Si R=0 → LED toujours allumée
+        if (config.rapport <= 0.0) {
+            ioctl(fd, RTGPIO_CLEAR, config.gpio);
+            continue;
+        }
+
+        // Sinon clignotement
+        RTIME ton = (RTIME)(config.rapport / config.frequence * 1e9);
+        RTIME toff = (RTIME)(((1.0 - config.rapport) / config.frequence) * 1e9);
+
+        while (1) {
+            ioctl(fd, RTGPIO_CLEAR, config.gpio); // Allumée (active low)
+            rt_task_sleep(ton);
+
+            ioctl(fd, RTGPIO_SET, config.gpio);   // Éteinte
+            rt_task_sleep(toff);
+
+            // Check for new config
+            if (rt_pipe_poll(&pipe_desc, NULL, 0) > 0) break;
+        }
+    }
+
+    close(fd);
+}
+
+int main() {
+    RT_TASK task;
+    led_config user_config;
+    int err;
+
+    // Création du pipe temps réel
+    err = rt_pipe_create(&pipe_desc, PIPE_NAME, PIPE_ID, P_MINOR_AUTO);
+    if (err) {
+        printf("Erreur création du pipe\n");
+        return EXIT_FAILURE;
+    }
+
+    // Création de la tâche temps réel
+    err = rt_task_create(&task, "led_task", TASK_STKSZ, TASK_PRIO, TASK_MODE);
+    if (err) {
+        printf("Erreur création de la tâche\n");
+        return EXIT_FAILURE;
+    }
+
+    rt_task_start(&task, &led_task, NULL);
+
+    // Boucle utilisateur : lit fréquence et rapport cyclique
+    while (1) {
+        printf("\nEntrez GPIO (0-9), fréquence (Hz) et rapport cyclique (0-1) : ");
+        scanf("%d %lf %lf", &user_config.gpio, &user_config.frequence, &user_config.rapport);
+
+        if (user_config.gpio < 0 || user_config.gpio > 9 || user_config.rapport < 0 || user_config.rapport > 1 || user_config.frequence <= 0) {
+            printf("Paramètres invalides !\n");
+            continue;
+        }
+
+        // Envoie des paramètres via le pipe
+        rt_pipe_write(&pipe_desc, &user_config, sizeof(user_config), P_NORMAL);
+    }
+
+    rt_task_delete(&task);
+    rt_pipe_delete(&pipe_desc);
+    return EXIT_SUCCESS;
+}#include <stdio.h>
+#include <stdlib.h>
+#include <alchemy/task.h>
+#include <alchemy/pipe.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include "rtdm_gpio.h"
+
+#define PIPE_NAME "led_pipe"
+#define PIPE_ID 42
+#define TASK_PRIO 99
+#define TASK_STKSZ 0
+#define TASK_MODE 0
+
+typedef struct {
+    int gpio;
+    double frequence;
+    double rapport;
+} led_config;
+
+RT_PIPE pipe_desc;
+
+void led_task(void *arg) {
+    int fd = open("/dev/rtdm/rtgpio", O_RDONLY);
+    if (fd == -1) {
+        rt_printf("Erreur ouverture périphérique RTDM\n");
+        return;
+    }
+
+    led_config config;
+
+    while (1) {
+        // Attente d’un message depuis le pipe
+        ssize_t n = rt_pipe_read(&pipe_desc, &config, sizeof(config), TM_INFINITE);
+        if (n != sizeof(config)) continue;
+
+        // Affiche la config reçue
+        rt_printf("GPIO %d | Freq %.2f Hz | Rapport %.2f\n", config.gpio, config.frequence, config.rapport);
+
+        // Configure GPIO en sortie
+        ioctl(fd, RTGPIO_SET_DIRECTION_OUTPUT, config.gpio);
+
+        // Si R=1 → LED toujours éteinte
+        if (config.rapport >= 1.0) {
+            ioctl(fd, RTGPIO_SET, config.gpio);
+            continue;
+        }
+
+        // Si R=0 → LED toujours allumée
+        if (config.rapport <= 0.0) {
+            ioctl(fd, RTGPIO_CLEAR, config.gpio);
+            continue;
+        }
+
+        // Sinon clignotement
+        RTIME ton = (RTIME)(config.rapport / config.frequence * 1e9);
+        RTIME toff = (RTIME)(((1.0 - config.rapport) / config.frequence) * 1e9);
+
+        while (1) {
+            ioctl(fd, RTGPIO_CLEAR, config.gpio); // Allumée (active low)
+            rt_task_sleep(ton);
+
+            ioctl(fd, RTGPIO_SET, config.gpio);   // Éteinte
+            rt_task_sleep(toff);
+
+            // Check for new config
+            if (rt_pipe_poll(&pipe_desc, NULL, 0) > 0) break;
+        }
+    }
+
+    close(fd);
+}
+
+int main() {
+    RT_TASK task;
+    led_config user_config;
+    int err;
+
+    // Création du pipe temps réel
+    err = rt_pipe_create(&pipe_desc, PIPE_NAME, PIPE_ID, P_MINOR_AUTO);
+    if (err) {
+        printf("Erreur création du pipe\n");
+        return EXIT_FAILURE;
+    }
+
+    // Création de la tâche temps réel
+    err = rt_task_create(&task, "led_task", TASK_STKSZ, TASK_PRIO, TASK_MODE);
+    if (err) {
+        printf("Erreur création de la tâche\n");
+        return EXIT_FAILURE;
+    }
+
+    rt_task_start(&task, &led_task, NULL);
+
+    // Boucle utilisateur : lit fréquence et rapport cyclique
+    while (1) {
+        printf("\nEntrez GPIO (0-9), fréquence (Hz) et rapport cyclique (0-1) : ");
+        scanf("%d %lf %lf", &user_config.gpio, &user_config.frequence, &user_config.rapport);
+
+        if (user_config.gpio < 0 || user_config.gpio > 9 || user_config.rapport < 0 || user_config.rapport > 1 || user_config.frequence <= 0) {
+            printf("Paramètres invalides !\n");
+            continue;
+        }
+
+        // Envoie des paramètres via le pipe
+        rt_pipe_write(&pipe_desc, &user_config, sizeof(user_config), P_NORMAL);
+    }
+
+    rt_task_delete(&task);
+    rt_pipe_delete(&pipe_desc);
+    return EXIT_SUCCESS;
+}
+```
+
+Dorénavant le pipe permet une communication temps réel propre entre la tâche et l’interface utilisateur.
+
+La structure led_config assure un transfert structuré des paramètres.
+
+Ce design respecte les contraintes Xenomai tout en offrant une interface simple et interactive.
+
+La fréquence minimale visible reste de l’ordre de 1–2 Hz.
+
+## 2.10 — Résilience du système après un crash déclenché
+
+Pour tester la robustesse du système embarqué et notamment l’isolation du noyau Xenomai, on pourrait déclencher un crash volontaire du noyau Linux via la commande suivante :
+
+```
+echo c > /proc/sysrq-trigger
+```
+> D'après nos recherches sur le net, cette commande active une fonctionnalité du noyau Linux appelée SysRq (System Request). Le caractère c déclenche un kernel panic volontaire, provoquant un crash système complet.
+
+N’ayant pas pu réaliser l’expérience en classe, nous formulons ici des hypothèses réalistes basées sur le fonctionnement de Xenomai et du noyau Linux.
+
+Contrairement à un simple plantage d’un processus utilisateur, ici c’est tout le noyau Linux (y compris la partie temps réel Xenomai, malgré l’isolation offerte par I-Pipe) qui est mis en arrêt complet. Le système est gelé, l’affichage peut rester figé, mais aucune tâche — qu’elle soit temps réel ou non — ne continue à s’exécuter.
+
+Xenomai utilise un patch temps réel (I-Pipe) qui permet à certaines tâches de contourner la planification classique du noyau Linux. Toutefois, lors d’un kernel panic, même cette couche est affectée : les interruptions matérielles sont stoppées, et l’ensemble des tâches temps réel sont figées. Aucune exécution n’est donc possible, même dans l’espace temps réel.
+
+
+En conclusion, un kernel panic déclenché par `echo c > /proc/sysrq-trigger` stoppe totalement le système, empêchant toute poursuite de l’exécution, même partielle. Cela illustre les limites de l’isolation temps réel en cas de défaillance critique du noyau.
