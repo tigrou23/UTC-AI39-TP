@@ -815,4 +815,8 @@ int main() {
 }
 ```
 
-On ne voit rien car ça va trop vite. Il faut baisser la fréquence. 
+### Fréquence minimale observable
+
+La LED clignote en “actif bas”, donc un clignotement trop rapide rend l’effet invisible à l’œil nu. Il est recommandé de ne pas dépasser 5 Hz si on souhaite observer distinctement les états de la LED.
+
+Ainsi, une fréquence de 1 Hz à 2 Hz avec un rapport cyclique de 0.5 permet un clignotement bien visible (1 seconde allumée, 1 seconde éteinte).
