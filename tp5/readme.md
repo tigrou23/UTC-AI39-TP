@@ -394,6 +394,8 @@ Cette base est utilisée pour accéder aux registres GPIO dans le driver.
 
 ### Question 2.4 : Opérations logiques pour activer un GPIO i en sortie
 
+![img2.png](resources/img/img2.png)
+
 Chaque GPIO est configuré sur 3 bits dans les registres `GPFSELn`. Pour les GPIO 0 à 9, ils sont tous dans `GPFSEL0`. Voici les étapes logiques pour configurer un GPIO i (0 ≤ i ≤ 9) en sortie :
 
 1. Lire la valeur du registre `GPFSEL0` (offset `0x00`).
