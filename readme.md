@@ -39,7 +39,7 @@ Chaque TP est documenté avec un `readme.md` complet, des fichiers sources et sc
 | [TP2](./tp2) | Périphériques d'entrée/sortie sous Linux embarqué (LED, boutons, joystick, LCD)               | ✅ Terminé   |
 | [TP3](./tp3) | Programmation temps réel avec Xenomai, tâches, sémaphores, synchronisation, mesure de latence | ✅ Terminé   |
 | [TP4](./tp4) | Mission Pathfinder : synchronisation de tâches critiques, surveillance, inversion de priorité | ✅ Terminé   |
-| TP5          | *(à venir)*                                                                                   | 🔜 En cours |
+| [TP5](./tp5) | GPIO temps réel avec Xenomai (RTDM)                                                           | ✅ Terminé   |
 ---
 
 ## 🛠 Prérequis techniques

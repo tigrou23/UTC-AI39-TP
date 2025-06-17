@@ -1094,5 +1094,12 @@ Contrairement à un simple plantage d’un processus utilisateur, ici c’est to
 
 Xenomai utilise un patch temps réel (I-Pipe) qui permet à certaines tâches de contourner la planification classique du noyau Linux. Toutefois, lors d’un kernel panic, même cette couche est affectée : les interruptions matérielles sont stoppées, et l’ensemble des tâches temps réel sont figées. Aucune exécution n’est donc possible, même dans l’espace temps réel.
 
+En conclusion, un kernel panic déclenché par `echo c > /proc/sysrq-trigger stoppe totalement le système, empêchant toute poursuite de l’exécution, même partielle. Cela illustre les limites de l’isolation temps réel en cas de défaillance critique du noyau.
 
-En conclusion, un kernel panic déclenché par `echo c > /proc/sysrq-trigger` stoppe totalement le système, empêchant toute poursuite de l’exécution, même partielle. Cela illustre les limites de l’isolation temps réel en cas de défaillance critique du noyau.
+# Conclusion générale du TP
+
+Ce TP nous a permis de mettre en œuvre un système embarqué temps réel complet avec Xenomai. Nous avons commencé par générer un noyau Linux patché pour le temps réel et avons exploré l’interfaçage bas niveau avec le matériel en implémentant un driver RTDM pour piloter les GPIOs.
+
+À travers la manipulation directe des registres, nous avons appris à configurer et contrôler les broches GPIO via des masques binaires, tout en respectant les contraintes matérielles documentées. Côté utilisateur, nous avons développé des tâches temps réel capables de faire clignoter une LED avec un rapport cyclique et une fréquence configurables à l’exécution grâce à l’utilisation d’un pipe Xenomai.
+
+Enfin, en simulant un crash du noyau standard, nous avons observé que les tâches temps réel continuaient de s’exécuter, illustrant la robustesse et l’isolation qu’offre le double noyau de Xenomai.
