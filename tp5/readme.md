@@ -741,7 +741,7 @@ void led_task(void *arg) {
     led_config config;
 
     while (1) {
-        // Attente d’un message depuis le pipe
+        // Attente d'un message depuis le pipe
         ssize_t n = rt_pipe_read(&pipe_desc, &config, sizeof(config), TM_INFINITE);
         if (n != sizeof(config)) continue;
 
@@ -774,8 +774,13 @@ void led_task(void *arg) {
             ioctl(fd, RTGPIO_SET, config.gpio);   // Éteinte
             rt_task_sleep(toff);
 
-            // Check for new config
-            if (rt_pipe_poll(&pipe_desc, NULL, 0) > 0) break;
+            // Vérification non-bloquante d'une nouvelle config
+            ssize_t check = rt_pipe_read(&pipe_desc, &config, sizeof(config), TM_NONBLOCK);
+            if (check == sizeof(config)) {
+                // Nouvelle config reçue, sortir de la boucle de clignotement
+                rt_printf("Nouvelle config reçue, changement...\n");
+                break;
+            }
         }
     }
 
